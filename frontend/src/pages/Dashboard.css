@@ -1,0 +1,443 @@
+/* =========================
+   DASHBOARD PAGE STYLES
+========================= */
+
+
+/* Page Container */
+.page-container {
+  padding: 0;
+  background-color: #f6f7f4; /* govt neutral */
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* =========================
+   LOADING STATE
+========================= */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.spinner {
+  border: 4px solid #e0e0e0;
+  border-top: 4px solid #2e8b57; /* agriculture green */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================
+   STATS GRID
+========================= */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+/* =========================
+   STAT CARD
+========================= */
+.stat-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  border-left: 4px solid #2e8b57;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+/* Removed excessive hover animation (govt-safe) */
+.stat-card:hover {
+  background-color: #fafafa;
+}
+
+/* =========================
+   STAT CARD COLOR VARIANTS
+   (Controlled, Official)
+========================= */
+.stat-card.green {
+  border-left-color: #2e8b57;
+}
+
+.stat-card.blue {
+  border-left-color: #1f6f43;
+}
+
+.stat-card.orange {
+  border-left-color: #c28f2c;
+}
+
+.stat-card.teal {
+  border-left-color: #3b7a78;
+}
+
+/* =========================
+   STAT ICON
+========================= */
+.stat-icon {
+  font-size: 22px;
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: #e6f4ec;
+  color: #1f6f43;
+}
+
+/* =========================
+   STAT INFO
+========================= */
+.stat-info {
+  flex: 1;
+}
+
+.stat-info h3 {
+  margin: 0 0 3px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.stat-info p {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: #555555;
+}
+
+/* =========================
+   TREND
+========================= */
+.trend {
+  font-size: 11px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trend.up {
+  color: #2e8b57;
+}
+
+/* =========================
+   CHARTS GRID
+========================= */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+   CHART CARD
+========================= */
+.chart-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.chart-card-body {
+  position: relative;
+}
+
+/* Custom scrollbar for chart containers */
+.chart-card-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.chart-card-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.chart-card-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.chart-card-body::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.chart-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.chart-card-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-card-header h3 span {
+  font-size: 12px;
+  color: #666666;
+  font-weight: normal;
+}
+
+.chart-card-body {
+  overflow-x: auto;
+}
+
+/* =========================
+   CHART CONTAINER
+========================= */
+.chart-container {
+  height: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-container.large {
+  height: 220px;
+}
+
+/* =========================
+   CHART FILTER DROPDOWN
+========================= */
+.chart-filter-dropdown {
+  background-color: #ffffff;
+  border: 1px solid #d6d6d6;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  min-width: 200px;
+}
+
+.dropdown-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background-color: #f4f6f4;
+}
+
+.dropdown-item.selected {
+  background-color: #e6f4ec;
+  color: #1f6f43;
+}
+
+/* =========================
+   LEGEND & STATUS COLORS
+========================= */
+.legend-item,
+.scheme-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.legend-color,
+.scheme-legend-item-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.status-completed {
+  background-color: rgba(46, 139, 87, 0.85);
+}
+
+.status-planned {
+  background-color: rgba(194, 143, 44, 0.85);
+}
+
+.status-active {
+  background-color: rgba(31, 111, 67, 0.85);
+}
+
+.status-default {
+  background-color: rgba(150, 150, 150, 0.8);
+}
+
+/* =========================
+   FILTER ICON
+========================= */
+.filter-icon {
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.filter-icon.active {
+  color: #2e8b57;
+}
+
+.filter-icon.inactive {
+  color: #666666;
+}
+
+/* =========================
+   BUDGET BY HOD CHART STYLES
+========================= */
+.budget-hod-container {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  grid-column: 1 / -1;
+  margin-bottom: 14px;
+}
+
+.budget-hod-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.budget-hod-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
+  flex-grow: 1;
+}
+
+.chart-filter-button {
+  padding: 8px 16px;
+  background: rgb(101, 148, 113);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+
+.chart-filter-button:hover {
+  background: rgb(76, 130, 82);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.chart-filter-button:active {
+  transform: translateY(0);
+}
+
+.budget-chart-wrapper {
+  height: auto;
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 20px;
+}
+
+.chart-box.large {
+  height: 400px;
+  min-height: 400px;
+  position: relative;
+}
+
+/* Scrollbar styling for budget chart */
+.budget-chart-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.budget-chart-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.budget-chart-wrapper::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.budget-chart-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* =========================
+   RESPONSIVE – MOBILE FIRST
+========================= */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 14px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-info h3 {
+    font-size: 20px;
+  }
+
+  .chart-container,
+  .chart-container.large {
+    height: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-icon {
+    font-size: 22px;
+    padding: 8px;
+  }
+
+  .chart-card {
+    padding: 14px;
+  }
+}

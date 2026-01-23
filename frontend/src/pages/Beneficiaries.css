@@ -1,0 +1,381 @@
+/* ===============================
+   BASE
+================================ */
+* {
+  box-sizing: border-box;
+  /* margin-left: 8px; */
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f6f7f4; /* govt neutral */
+  color: #1a1a1a;
+}
+
+/* ===============================
+   FILTER TOOLBAR
+================================ */
+.filters-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #ffffff;
+  border: 1px solid #cfd8cc;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* ===============================
+   FILTERS (GOVT STYLE)
+================================ */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 6px;
+  border: 1px solid #d6d6d6;
+}
+
+.filter-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  flex: 1 1 180px;
+}
+
+.filter-row label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.filter-row select,
+.filter-row input {
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid #cfd8cc;
+  background: #ffffff;
+  font-size: 13px;
+}
+
+.filter-row select:focus,
+.filter-row input:focus {
+  outline: none;
+  border-color: #2e8b57;
+}
+
+/* ===============================
+   FILTER ACTIONS
+================================ */
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.filter-actions .btn-search,
+.filter-actions .btn-clear {
+  padding: 8px 14px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-actions .btn-search {
+  background: #2e8b57;
+  color: #ffffff;
+}
+
+.filter-actions .btn-clear {
+  background: #f6f3ea;
+  border-color: #c2b280;
+  color: #374151;
+}
+
+/* ===============================
+   SUMMARY / STAT CARDS
+================================ */
+.summary-lists,
+.stat-cards {
+  display: flex;
+  gap: 14px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.list-card,
+.stat-card {
+  background: #ffffff;
+  padding: 14px;
+  border-radius: 6px;
+  border: 1px solid #d6d6d6;
+  min-width: 200px;
+  flex: 1 1 220px;
+}
+
+.list-card h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.list-card li {
+  padding: 6px 0;
+  border-bottom: 1px dashed #e5e7eb;
+  font-size: 13px;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card.clickable:hover {
+  background: #f9faf7;
+}
+
+/* ===============================
+   TABLES (GOVT CRITICAL)
+================================ */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.responsive-table {
+  width: 100%;
+  min-width: 720px; /* enables mobile scroll */
+  border-collapse: collapse;
+  margin-top: 14px;
+  background: #ffffff;
+  border: 1px solid #d6d6d6;
+}
+
+.responsive-table thead {
+  background: #eef3ef;
+}
+
+.responsive-table th {
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #374151;
+  border-bottom: 2px solid #cfd8cc;
+}
+
+.responsive-table td {
+  padding: 9px 10px;
+  font-size: 13px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.responsive-table tbody tr:nth-child(even) {
+  background: #f9faf7;
+}
+
+.responsive-table tbody tr:hover {
+  background: #f1f5f2;
+}
+
+/* ===============================
+   TABLE HEADER ACTIONS
+================================ */
+.table-header .controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.table-header .btn-export,
+.table-header .btn-excel {
+  background: #2e8b57;
+  color: #ffffff;
+  border: none;
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.table-header label.import-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #cfd8cc;
+}
+
+.table-header input[type="file"] {
+  display: none;
+}
+
+/* ===============================
+   PAGINATION
+================================ */
+.pagination {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.pagination button {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #cfd8cc;
+  background: #ffffff;
+  font-weight: 600;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===============================
+   DRAWER
+================================ */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1000;
+}
+
+.drawer {
+  background: #ffffff;
+  height: 100%;
+  width: 420px;
+  max-width: 100%;
+  border-left: 1px solid #d6d6d6;
+  overflow-y: auto;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.drawer-body {
+  padding: 14px;
+}
+
+.drawer-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+/* ===============================
+   MODAL
+================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  width: 92%;
+  max-width: 700px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #d6d6d6;
+
+  display: flex;
+  flex-direction: column;
+
+  max-height: 90vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+  margin-top: 10px;
+}
+
+.close-btn {
+  background: #f6f3ea;
+  border: 1px solid #c2b280;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+/* ===============================
+   RESPONSIVE – MOBILE
+================================ */
+@media (max-width: 900px) {
+  .responsive-table th:nth-child(11),
+  .responsive-table td:nth-child(11),
+  .responsive-table th:nth-child(12),
+  .responsive-table td:nth-child(12) {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+  }
+
+  .filter-row {
+    width: 100%;
+  }
+
+  .filter-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .drawer {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn-filter,
+  .filter-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pagination {
+    justify-content: center;
+  }
+}
