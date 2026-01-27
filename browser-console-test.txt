@@ -1,0 +1,52 @@
+/**
+ * Browser Console Test - Copy and paste this in your browser console to test HOD creation
+ */
+
+// Get the auth token from localStorage
+const user = JSON.parse(localStorage.getItem('user') || '{}');
+const token = user.token;
+
+console.log('Testing HOD API...\n');
+console.log('Token:', token ? 'Found' : 'Not found');
+
+if (!token) {
+  console.error('❌ No auth token found. Please log in first.');
+} else {
+  // Test HOD creation
+  const testHod = {
+    name: 'Test HOD ' + Date.now(),
+    department: 'Finance',
+    category_id: '',
+    email: 'test@example.com',
+    phone: '9999999999',
+    status: 'active'
+  };
+
+  console.log('\nCreating HOD with data:');
+  console.log(testHod);
+  console.log('\nMaking API request...\n');
+
+  fetch('http://localhost:5000/api/hods', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(testHod)
+  })
+  .then(response => {
+    console.log('Response Status:', response.status);
+    console.log('Response Headers:', {
+      'content-type': response.headers.get('content-type')
+    });
+    return response.json();
+  })
+  .then(data => {
+    console.log('\n✅ Success!');
+    console.log('Response:', data);
+  })
+  .catch(error => {
+    console.error('\n❌ Error:');
+    console.error(error);
+  });
+}

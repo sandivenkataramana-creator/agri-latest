@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import Header from '../components/Header';
 import Modal from '../components/Modal';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
-import { getStaff, createStaff, updateStaff, deleteStaff, getHODs, getCategories, createCategory } from '../services/api';
+import { getStaff, createStaff, updateStaff, deleteStaff, getHODs, getCategories, createCategory, createStaffAccount } from '../services/api';
 
 const Staff = () => {
   const [staff, setStaff] = useState([]);
@@ -24,12 +23,15 @@ const Staff = () => {
     hod_id: '',
     email: '',
     phone: '',
-    status: 'active'
+    status: 'active',
+    password: ''
   });
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  // Parse user from localStorage once, at initialization
+  const [user] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
   const isSuperAdmin = user.role === 'superadmin';
   const isReadOnly = !isSuperAdmin;
   const isHOD = user.role === 'hod';
@@ -120,11 +122,32 @@ const Staff = () => {
         hod_id: Number(formData.hod_id)
       };
       
+      // Remove password from staff creation data
+      const staffData = { ...submitData };
+      delete staffData.password;
+      
+      let staffId;
       if (editingStaff) {
-        await updateStaff(editingStaff.id, submitData);
+        await updateStaff(editingStaff.id, staffData);
+        staffId = editingStaff.id;
       } else {
-        await createStaff(submitData);
+        const response = await createStaff(staffData);
+        staffId = response.data.id;
       }
+      
+      // For new staff members, create account with auto-generated password
+      if (!editingStaff) {
+        try {
+          const accountResponse = await createStaffAccount(staffId);
+          alert(`Staff created successfully!\n\nLogin Credentials:\nUsername: ${accountResponse.data.username}\nEmail: ${accountResponse.data.email}\n\n✅ A temporary password has been sent to the staff member's email address.`);
+        } catch (accountErr) {
+          console.error('Error creating account:', accountErr);
+          alert('Staff created but account creation failed. Please create account manually.');
+        }
+      } else {
+        alert('Staff ' + (editingStaff ? 'updated' : 'created') + ' successfully!');
+      }
+      
       fetchData(); // Refresh the list
       handleCloseModal();
     } catch (err) {
@@ -227,7 +250,7 @@ const Staff = () => {
                   <td>{member.email}</td>
                   <td>{member.phone}</td>
                   <td>
-                    <span className={`status-badge ${member.status}`}>{member.status}</span>
+                    <span className={`status-badge ₹{member.status}`}>{member.status}</span>
                   </td>
                   <td>
                     <div className="action-buttons">
@@ -332,6 +355,12 @@ const Staff = () => {
             <label>Phone</label>
             <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required />
           </div>
+          {!editingStaff && (
+            <div className="form-group">
+              <label>Password (for login account)</label>
+              <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Leave blank to skip account creation" />
+            </div>
+          )}
           <div className="form-group">
             <label>Status</label>
             <select name="status" value={formData.status} onChange={handleChange}>
