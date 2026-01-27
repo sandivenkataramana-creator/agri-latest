@@ -111,6 +111,7 @@ const Dashboard = () => {
   const [revenueByHOD, setRevenueByHOD] = useState([]);
   const [revenueByDepartment, setRevenueByDepartment] = useState([]);
   const [allHODs, setAllHODs] = useState([]);
+  const [allStaff, setAllStaff] = useState([]);
   const [selectedHOD, setSelectedHOD] = useState('');
   const [selectedHODTable, setSelectedHODTable] = useState({ schemes: '', budget: '', attendance: '', revenue: '' });
   const [revenueDetails, setRevenueDetails] = useState([]);
@@ -2188,6 +2189,8 @@ if (!isNaN(safeTotal)) {
     };
   })();
 
+ const totalHodCount = allHODs.length || 0;
+ const totalStaffCount = stats.totalStaff || 0;
   const totalSchemeCount = filteredSchemesList.length || (schemesHODFilter ? 0 : schemesSummary.total.total) || 0;
   const perSchemePercent = totalSchemeCount > 0 ? 100 / totalSchemeCount : 0;
   const isTotalSchemesView = selectedSchemeType === 'all';
@@ -2601,7 +2604,7 @@ if (!isNaN(safeTotal)) {
           <div className="dashboard-tile-value">
             {(stats.totalHods || 0) + (stats.totalStaff || 0)}
           </div>
-          <div className="dashboard-tile-sub">HODs + Staff</div>
+          <div className="dashboard-tile-sub">HODs: {totalHodCount} Staff: {totalStaffCount}</div>
         </div>
         <div className="dashboard-tile-icon" aria-hidden="true">
           <FiUsers />
@@ -2696,11 +2699,8 @@ if (!isNaN(safeTotal)) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>
                 Schemes Summary (FY {selectedSchemesYear || schemesSummary.year})
-                {schemesHODFilter && (
-                  <span style={{ fontWeight: '400', color: '#666', fontSize: '12px' }}> - {allHODs.find(h => h.id === parseInt(schemesHODFilter))?.name || 'HOD'}</span>
-                )}
               </h3>
-              <span style={{ padding: '4px 8px', backgroundColor: '#e8f5e9', color: '#1b5e20', borderRadius: '999px', fontSize: '11px', fontWeight: 700 }}>{totalSchemeCount} {schemesHODFilter ? 'Schemes' : 'Total'}</span>
+              {/* <span style={{ padding: '4px 8px', backgroundColor: '#e8f5e9', color: '#1b5e20', borderRadius: '999px', fontSize: '11px', fontWeight: 700 }}>{totalSchemeCount} {schemesHODFilter ? 'Schemes' : 'Total'}</span> */}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <select 
@@ -2718,10 +2718,13 @@ if (!isNaN(safeTotal)) {
                   maxWidth: '150px'
                 }}
               >
-                <option value="">All HODs</option>
+                <option value="">All HODs ({totalSchemeCount || 0} schemes)</option>
                 {allHODs.map((hod) => (
                   <option key={hod.id} value={hod.id}>
-                    {hod.name}
+                    {hod.name}({schemesHODFilter ? filteredSchemesList.filter(s => {
+                      const schemeHODName = s.hod_name || s.hod || '';
+                      return schemeHODName.toLowerCase() === hod.name.toLowerCase();
+                    }).length : hod.scheme_count})
                   </option>
                 ))}
               </select>
