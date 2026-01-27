@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Header from '../components/Header';
 import Modal from '../components/Modal';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX } from 'react-icons/fi';
-import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -258,13 +256,13 @@ const Budget = () => {
   // Keep original formatCurrency logic
   const _formatCurrency = (value) => {
     const num2 = parseFloat(value) || 0;
-    if (num2 === 0) return 'Γé╣0';
+    if (num2 === 0) return '$0';
     if (num2 >= 10000000) {
-      return `Γé╣${(num2 / 10000000).toFixed(2)} Cr`;
+      return `$${(num2 / 10000000).toFixed(2)} Cr`;
     } else if (num2 >= 100000) {
-      return `Γé╣${(num2 / 100000).toFixed(2)} L`;
+      return `$${(num2 / 100000).toFixed(2)} L`;
     }
-    return `Γé╣${num2.toLocaleString()}`;
+    return `$${num2.toLocaleString()}`;
   };
 
   // reuse _formatCurrency where needed
@@ -426,21 +424,21 @@ const Budget = () => {
       {/* Summary Cards */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon blue">Γé╣</div>
+          <div className="stat-icon blue">$</div>
           <div className="stat-info">
             <h3>{formatCurrency(totalAllocated)}</h3>
             <p>Total Allocated</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon green">Γé╣</div>
+          <div className="stat-icon green">$</div>
           <div className="stat-info">
             <h3>{formatCurrency(totalUtilized)}</h3>
             <p>Total Utilized</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon orange">Γé╣</div>
+          <div className="stat-icon orange">$</div>
           <div className="stat-info">
             <h3>{formatCurrency(totalAllocated - totalUtilized)}</h3>
             <p>Remaining Budget</p>
@@ -776,11 +774,11 @@ const Budget = () => {
             <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Enter description" rows={3}></textarea>
           </div>
           <div className="form-group">
-            <label>Budget Sanction (HOD) (Γé╣)</label>
+            <label>Budget Sanction (HOD) ($)</label>
             <input type="number" name="allocated_amount" value={formData.allocated_amount} onChange={handleChange} required />
           </div>
           <div className="form-group">
-            <label>Budget Utilized (HOD) (Γé╣)</label>
+            <label>Budget Utilized (HOD) ($)</label>
             <input type="number" name="utilized_amount" value={formData.utilized_amount} onChange={handleChange} />
           </div>
           <div className="form-group">
@@ -797,35 +795,35 @@ const Budget = () => {
             <input type="text" name="section" value={formData.section} onChange={handleChange} placeholder="Enter section" />
           </div>
           <div className="form-group">
-            <label>Budget Estimation (State) (Γé╣)</label>
+            <label>Budget Estimation (State) ($)</label>
             <input type="number" name="budget_estimation_state" value={formData.budget_estimation_state} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>Budget Estimation (Central) (Γé╣)</label>
+            <label>Budget Estimation (Central) ($)</label>
             <input type="number" name="budget_estimation_central" value={formData.budget_estimation_central} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>Budget Sanction (State) (Γé╣)</label>
+            <label>Budget Sanction (State) ($)</label>
             <input type="number" name="budget_sanction_state" value={formData.budget_sanction_state} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>Budget Sanction (Central) (Γé╣)</label>
+            <label>Budget Sanction (Central) ($)</label>
             <input type="number" name="budget_sanction_central" value={formData.budget_sanction_central} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>Budget Remaining (State) (Γé╣)</label>
+            <label>Budget Remaining (State) ($)</label>
             <input type="number" name="budget_remaining_state" value={formData.budget_remaining_state} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>Budget Remaining (Central) (Γé╣)</label>
+            <label>Budget Remaining (Central) ($)</label>
             <input type="number" name="budget_remaining_central" value={formData.budget_remaining_central} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>Budget Pending (State) (Γé╣)</label>
+            <label>Budget Pending (State) ($)</label>
             <input type="number" name="budget_pending_state" value={formData.budget_pending_state} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label>Budget Pending (Central) (Γé╣)</label>
+            <label>Budget Pending (Central) ($)</label>
             <input type="number" name="budget_pending_central" value={formData.budget_pending_central} onChange={handleChange} />
           </div>
           <div className="form-group">

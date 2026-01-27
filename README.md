@@ -2,9 +2,9 @@
 
 A comprehensive government dashboard system for managing HODs (Heads of Departments), Schemes, Staff, Budget, KPIs, Nodal Officers, and Attendance.
 
-## Features
+## ✨ Key Features
 
-Based on the dashboard design:
+### Core Functionality
 - **Dashboard Overview**: Summary stats, charts for schemes by category, budget by HOD, revenue distribution, and attendance
 - **HODs Management**: CRUD operations for Heads of Departments
 - **Schemes Management**: Track government schemes with budget allocation and utilization
@@ -14,11 +14,21 @@ Based on the dashboard design:
 - **Nodal Officers**: Manage scheme-wise nodal officer assignments
 - **Attendance**: Track HOD-wise staff attendance
 
+### 🆕 Multi-Department HOD Support
+- **One HOD → Multiple Departments**: A single HOD can be assigned to manage multiple departments using the same email
+- **Smart Account Reuse**: When creating an HOD with an existing email, the system automatically reuses the account and adds a new department mapping
+- **Unified Login**: HODs log in once and see all departments they manage in a single session
+- **Auto-Generated Credentials**: Temporary passwords are automatically generated and sent via email
+- **Flexible Department Assignment**: Add HODs to new departments anytime without creating duplicate accounts
+
+**📖 Learn more:** [HOD_MULTI_DEPT_IMPLEMENTATION.md](HOD_MULTI_DEPT_IMPLEMENTATION.md)
+
 ## Tech Stack
 
 - **Frontend**: React.js, React Router, Chart.js, React Icons
 - **Backend**: Node.js, Express.js
 - **Database**: MySQL
+- **Email**: Nodemailer (Gmail SMTP)
 
 ## Project Structure
 

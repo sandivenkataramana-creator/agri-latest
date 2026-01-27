@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Header from '../components/Header';
 import ListModal from '../components/ListModal';
-import { Pie, Bar, Doughnut } from 'react-chartjs-2';
+import { Pie, Bar, Line, Doughnut } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import * as XLSX from 'xlsx';
 import { FiUsers, FiCheckCircle, FiActivity, FiPieChart, FiFilter, FiBarChart2 } from 'react-icons/fi';
@@ -111,7 +112,6 @@ const Dashboard = () => {
   const [revenueByHOD, setRevenueByHOD] = useState([]);
   const [revenueByDepartment, setRevenueByDepartment] = useState([]);
   const [allHODs, setAllHODs] = useState([]);
-  const [allStaff, setAllStaff] = useState([]);
   const [selectedHOD, setSelectedHOD] = useState('');
   const [selectedHODTable, setSelectedHODTable] = useState({ schemes: '', budget: '', attendance: '', revenue: '' });
   const [revenueDetails, setRevenueDetails] = useState([]);
@@ -201,81 +201,6 @@ const Dashboard = () => {
     }
   }, [chartFilters.schemes.hod_id]);
 
-  // Refetch ONLY attendance data when attendance date period or custom date range changes
-  useEffect(() => {
-    // Preserve scroll position before fetching
-    const scrollY = window.scrollY;
-    
-    const params = { ...filters };
-    
-    // Add date range parameters based on selected period
-    if (attendanceDatePeriod === 'today') {
-      const today = new Date().toISOString().split('T')[0];
-      params.date_start = today;
-      params.date_end = today;
-    } else if (attendanceDatePeriod === 'weekly') {
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - dayOfWeek); // Start from Sunday
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6); // End on Saturday
-      params.date_start = startOfWeek.toISOString().split('T')[0];
-      params.date_end = endOfWeek.toISOString().split('T')[0];
-    } else if (attendanceDatePeriod === 'monthly') {
-      const today = new Date();
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      params.date_start = startOfMonth.toISOString().split('T')[0];
-      params.date_end = endOfMonth.toISOString().split('T')[0];
-    } else if (attendanceDatePeriod === 'custom') {
-      if (customDateRange.start && customDateRange.end) {
-        params.date_start = customDateRange.start;
-        params.date_end = customDateRange.end;
-      } else {
-        return; // Don't refetch if custom dates are incomplete
-      }
-    }
-    
-    // Fetch only attendance-related data to avoid full page refresh
-    const fetchAttendanceData = async () => {
-      try {
-        const [statsRes, attendanceRes] = await Promise.all([
-          getDashboardStats(params),
-          getAttendanceByHOD(params)
-        ]);
-        
-        // Update only attendance-related state
-        setStats(prevStats => ({
-          ...prevStats,
-          todayAttendance: statsRes.data.todayAttendance || {
-            total: 0,
-            present: 0,
-            absent: 0,
-            late: 0,
-            halfDay: 0,
-            onLeave: 0
-          }
-        }));
-        
-        setAttendanceByHOD(attendanceRes.data || []);
-      } catch (err) {
-        console.error('Error fetching attendance data:', err);
-      }
-    };
-    
-    fetchAttendanceData();
-    
-    // Restore scroll position after rendering completes
-    const scrollTimeout = setTimeout(() => {
-      window.scrollTo(0, scrollY);
-    }, 50);
-    
-    return () => {
-      clearTimeout(scrollTimeout);
-    };
-  }, [attendanceDatePeriod, customDateRange]);
-
   const fetchDetailedTableData = async (hodId) => {
     try {
       const [schemesRes, budgetRes, attendanceRes] = await Promise.all([
@@ -307,8 +232,6 @@ const Dashboard = () => {
     if (f.month && f.month !== 'All') params.month = f.month;
     if (f.date) params.date = f.date;
     if (f.hod_id) params.hod_id = f.hod_id;
-    if (f.date_start) params.date_start = f.date_start;
-    if (f.date_end) params.date_end = f.date_end;
 
     // Default to current financial year for schemes summary if not explicitly provided
     const now = new Date();
@@ -563,13 +486,13 @@ const Dashboard = () => {
 
   const formatCurrency = (value) => {
     if (typeof value === 'string') value = parseFloat(value);
-    if (isNaN(value)) return '$0';
+    if (isNaN(value)) return 'Γé╣0';
     if (value >= 10000000) {
-      return `$${(value / 10000000).toFixed(2)} Cr`;
+      return `Γé╣${(value / 10000000).toFixed(2)} Cr`;
     } else if (value >= 100000) {
-      return `$${(value / 100000).toFixed(2)} L`;
+      return `Γé╣${(value / 100000).toFixed(2)} L`;
     }
-    return `$${value.toLocaleString()}`;
+    return `Γé╣${value.toLocaleString()}`;
   };
 
   const formatBeneficiaries = (count) => {
@@ -1230,11 +1153,11 @@ const Dashboard = () => {
       // Format total revenue
       const safeTotal = Number(total);
 
-let displayValue = '$0';
+let displayValue = 'Γé╣0';
 if (!isNaN(safeTotal)) {
-  if (safeTotal >= 10000000) displayValue = `$${(safeTotal / 10000000).toFixed(2)} Cr`;
-  else if (safeTotal >= 100000) displayValue = `$${(safeTotal / 100000).toFixed(2)} L`;
-  else displayValue = `$${safeTotal.toLocaleString()}`;
+  if (safeTotal >= 10000000) displayValue = `Γé╣${(safeTotal / 10000000).toFixed(2)} Cr`;
+  else if (safeTotal >= 100000) displayValue = `Γé╣${(safeTotal / 100000).toFixed(2)} L`;
+  else displayValue = `Γé╣${safeTotal.toLocaleString()}`;
 }
 
       
@@ -1851,7 +1774,7 @@ if (!isNaN(safeTotal)) {
         },
         ticks: {
           callback: function(value) {
-            return '$' + value + 'Cr';
+            return 'Γé╣' + value + 'Cr';
           }
         }
       },
@@ -1929,7 +1852,7 @@ if (!isNaN(safeTotal)) {
             const value = context.parsed || 0;
             const total = context.dataset.data.reduce((a, b) => Number(a) + Number(b), 0);
             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-            return `Revenue: $${formatRevenueShort(value)} (${percentage}%)`;
+            return `Revenue: Γé╣${formatRevenueShort(value)} (${percentage}%)`;
           }
         }
       },
@@ -2189,8 +2112,6 @@ if (!isNaN(safeTotal)) {
     };
   })();
 
- const totalHodCount = allHODs.length || 0;
- const totalStaffCount = stats.totalStaff || 0;
   const totalSchemeCount = filteredSchemesList.length || (schemesHODFilter ? 0 : schemesSummary.total.total) || 0;
   const perSchemePercent = totalSchemeCount > 0 ? 100 / totalSchemeCount : 0;
   const isTotalSchemesView = selectedSchemeType === 'all';
@@ -2604,7 +2525,7 @@ if (!isNaN(safeTotal)) {
           <div className="dashboard-tile-value">
             {(stats.totalHods || 0) + (stats.totalStaff || 0)}
           </div>
-          <div className="dashboard-tile-sub">HODs: {totalHodCount} Staff: {totalStaffCount}</div>
+          <div className="dashboard-tile-sub">HODs + Staff</div>
         </div>
         <div className="dashboard-tile-icon" aria-hidden="true">
           <FiUsers />
@@ -2699,8 +2620,11 @@ if (!isNaN(safeTotal)) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>
                 Schemes Summary (FY {selectedSchemesYear || schemesSummary.year})
+                {schemesHODFilter && (
+                  <span style={{ fontWeight: '400', color: '#666', fontSize: '12px' }}> - {allHODs.find(h => h.id === parseInt(schemesHODFilter))?.name || 'HOD'}</span>
+                )}
               </h3>
-              {/* <span style={{ padding: '4px 8px', backgroundColor: '#e8f5e9', color: '#1b5e20', borderRadius: '999px', fontSize: '11px', fontWeight: 700 }}>{totalSchemeCount} {schemesHODFilter ? 'Schemes' : 'Total'}</span> */}
+              <span style={{ padding: '4px 8px', backgroundColor: '#e8f5e9', color: '#1b5e20', borderRadius: '999px', fontSize: '11px', fontWeight: 700 }}>{totalSchemeCount} {schemesHODFilter ? 'Schemes' : 'Total'}</span>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <select 
@@ -2718,13 +2642,10 @@ if (!isNaN(safeTotal)) {
                   maxWidth: '150px'
                 }}
               >
-                <option value="">All HODs ({totalSchemeCount || 0} schemes)</option>
+                <option value="">All HODs</option>
                 {allHODs.map((hod) => (
                   <option key={hod.id} value={hod.id}>
-                    {hod.name}({schemesHODFilter ? filteredSchemesList.filter(s => {
-                      const schemeHODName = s.hod_name || s.hod || '';
-                      return schemeHODName.toLowerCase() === hod.name.toLowerCase();
-                    }).length : hod.scheme_count})
+                    {hod.name}
                   </option>
                 ))}
               </select>
@@ -2777,231 +2698,8 @@ if (!isNaN(safeTotal)) {
             )}
           </div>
         </div>
-        {/* Chart 1: HOD Revenue - Donut Chart with center text */}
-        <div className="chart-card">
-          <div className="chart-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3><FiPieChart /> HOD Revenue {chartFilters.revenue.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.revenue.hod_id))?.name})</span>}</h3>
-            <div className="chart-filter-container" style={{ position: 'relative' }}>
-              <FiFilter 
-                style={{ cursor: 'pointer', color: chartFilters.revenue.hod_id ? '#2e7d32' : '#666', fontSize: '18px' }} 
-                title="Filter" 
-                onClick={(e) => { e.stopPropagation(); toggleFilterDropdown('revenue'); }}
-              />
-              {renderFilterDropdown('revenue')}
-            </div>
-          </div>
-          <div className="chart-card-body">
-            <div className="chart-container" style={{ cursor: 'pointer', height: '240px', position: 'relative' }}>
-              <Doughnut data={hodRevenueChartData} options={hodRevenuePieOptions} plugins={[ChartDataLabels, revenueCenterTextPlugin]} />
-            </div>
-          </div>
-        </div>
 
-       
-
-           <div className="chart-card" style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', gridColumn: '1 / -1', border: '1px solid #d0d0d0', overflow: 'hidden' }}>
-              <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>Budget by HOD (₹ Cr)</h3>
-                <select
-                  value={budgetByHODYearFilter || budgetSummary.year}
-                  onChange={(e) => {
-                    setBudgetByHODYearFilter(e.target.value);
-                  }}
-                  style={{
-                    padding: '6px 8px',
-                    fontSize: '12px',
-                    border: '1px solid #d0d0d0',
-                    borderRadius: '4px',
-                    backgroundColor: '#fff',
-                    color: '#333',
-                    cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="2024-25">2024-25</option>
-                  <option value="2025-26">2025-26</option>
-                  <option value="2026-27">2026-27</option>
-                  <option value="2027-28">2027-28</option>
-                </select>
-              </div>
-              <div style={{ height: 'auto', maxHeight: '340px', overflowY: 'auto', overflowX: 'hidden', padding: '12px 16px' }}>
-                <div className="chart-box large" style={{ height: '300px', minHeight: '300px' }}>
-                  <Bar data={budgetHODStackedBarData} options={budgetHODStackedBarOptions} plugins={[ChartDataLabels]} />
-                </div>
-              </div>
-            </div>
-
-                   {/* Chart 2: Schemes (HOD wise) - Bar + Line Combined Chart */}
-        <div className="chart-card">
-          <div className="chart-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <h3><FiBarChart2 /> {isSchemeWiseView ? 'Schemes (Scheme wise)' : 'Schemes (HOD wise)'} {chartFilters.schemes.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.schemes.hod_id))?.name})</span>}</h3>
-              {isSchemeWiseView && (
-                <div style={{ display: 'flex', gap: '10px', fontSize: '11px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(76, 175, 80, 0.8)' }}></span> Completed
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(255, 193, 7, 0.8)' }}></span> Planned
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(33, 150, 243, 0.8)' }}></span> Active
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="chart-filter-container" style={{ position: 'relative' }}>
-              <FiFilter 
-                style={{ cursor: 'pointer', color: chartFilters.schemes.hod_id ? '#2e7d32' : '#666', fontSize: '18px' }} 
-                title="Filter" 
-                onClick={(e) => { e.stopPropagation(); toggleFilterDropdown('schemes'); }}
-              />
-              {renderFilterDropdown('schemes')}
-            </div>
-          </div>
-          <div className="chart-card-body">
-            <div className="chart-container" style={{ cursor: 'pointer', height: '240px' }}>
-              <Bar data={schemesHODBarLineData} options={schemesBarLineOptions} />
-            </div>
-          </div>
-        </div>
-        {/* Budget Summary - Vertical Bar with View Filter */}
-        <div className="chart-card" style={{ backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Budget Summary (FY {budgetSummaryYearFilter || budgetSummary.year})</h3>
-            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
-              <select
-                value={budgetSummaryYearFilter || budgetSummary.year}
-                onChange={(e) => {
-                  refreshBudgetSummary(e.target.value);
-                }}
-                style={{
-                  padding: '6px 8px',
-                  fontSize: '12px',
-                  border: '1px solid #d0d0d0',
-                  borderRadius: '4px',
-                  backgroundColor: '#fff',
-                  color: '#333',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                <option value="2024-25">2024-25</option>
-                <option value="2025-26">2025-26</option>
-                <option value="2026-27">2026-27</option>
-                <option value="2027-28">2027-28</option>
-              </select>
-              <select
-                value={selectedBudgetView}
-                onChange={(e) => setSelectedBudgetView(e.target.value)}
-                style={{
-                  padding: '6px 8px',
-                  fontSize: '12px',
-                  border: '1px solid #d0d0d0',
-                  borderRadius: '4px',
-                  backgroundColor: '#fff',
-                  color: '#333',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                <option value="overall">Overall Budget</option>
-                <option value="status">Budget Status</option>
-              </select>
-            </div>
-          </div>
-          <div className="chart-card-body" style={{ height: '240px', padding: '12px 14px' }}>
-            <Bar data={budgetSummaryChartData} options={budgetSummaryChartOptions} plugins={[ChartDataLabels]} />
-          </div>
-        </div>
-
-        
-      </div>
-
-       
-{/* <div className="stat-card teal" style={{ cursor: 'pointer' }} onClick={() => navigate('/attendance?period=today')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ backgroundColor: '#e0f2f1', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FiClock style={{ color: '#00897B', fontSize: '24px' }} />
-            </div>
-            <div>
-              <h4 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.todayAttendance?.total || 0}</h4>
-              <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#666' }}>Today's Attendance</p>
-              
-               <div className="trend" style={{ fontSize: '11px', display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
-              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=present'); }} style={{ color: '#4CAF50', cursor: 'pointer' }}>{stats.todayAttendance?.present || 0} Present</span>
-              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=late'); }} style={{ color: '#FF9800', cursor: 'pointer' }}>{stats.todayAttendance?.late || 0} Late</span>
-              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=absent'); }} style={{ color: '#F44336', cursor: 'pointer' }}>{stats.todayAttendance?.absent || 0} Absent</span>
-              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=half_day'); }} style={{ color: '#9C27B0', cursor: 'pointer' }}>{stats.todayAttendance?.halfDay || 0} Half</span>
-            </div>
-            </div>
-          </div>
-        </div> */}
-      {/* Quick Stats - Hidden as cards moved to main grid */}
-      {/* <div className="quick-stats" style={{ display: 'none' }}>
-
-        <div className="quick-stat">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ backgroundColor: '#e8f5e9', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FiTrendingUp style={{ color: '#4CAF50', fontSize: '20px' }} />
-            </div>
-            <div>
-              <h4>{formatCurrency(quickStats.utilizedBudget)}</h4>
-              <p>Budget Utilized ({quickStats.budgetUtilization}%)</p>
-            </div>
-          </div>
-        </div>
-        <div className="quick-stat">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ backgroundColor: '#e3f2fd', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BiWallet style={{ color: '#2196F3', fontSize: '20px' }} />
-            </div>
-            <div>
-              <h4>{formatCurrency(quickStats.remainingBudget)}</h4>
-              <p>Remaining Budget</p>
-            </div>
-          </div>
-        </div>
-        <div className="quick-stat">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ backgroundColor: '#fff3e0', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FiMapPin style={{ color: '#FF9800', fontSize: '20px' }} />
-            </div>
-            <div>
-              <h4>{quickStats.districtsCovered}</h4>
-              <p>Districts Covered</p>
-            </div>
-          </div>
-        </div>
-        <div className="quick-stat" onClick={() => window.location.href = '/beneficiaries'} style={{ cursor: 'pointer' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ backgroundColor: '#fce4ec', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <HiOutlineUserGroup style={{ color: '#E91E63', fontSize: '20px' }} />
-            </div>
-            <div>
-              <h4>{formatBeneficiaries(quickStats.beneficiaries)}</h4>
-              <p>Beneficiaries</p>
-              <p>View & manage</p>
-            </div>
-          </div>
-        </div> */}
-        {/* <div className="quick-stat">
-          <h4>{quickStats.attendanceRate}%</h4>
-          <p>Attendance Rate</p>
-        </div> */}
-        
-      {/* </div> */}
-      {/* Charts - 2x2 Grid Layout */}
-      
-      <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-        
-
-       
-
-        {/* Chart 3: Budget (HOD wise) */}
-   
-        {/* Chart 4: Attendance (HOD wise) - Bar Chart */}
-         {/* Attendance Summary Pie Chart - Top Right */}
+        {/* Attendance Summary Pie Chart - Top Right */}
         <div className="chart-card" style={{ backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Attendance (Today)</h3>
@@ -3281,6 +2979,90 @@ if (!isNaN(safeTotal)) {
             </div>
           </div>
         </div>
+
+           <div className="chart-card" style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', gridColumn: '1 / -1', border: '1px solid #d0d0d0', overflow: 'hidden' }}>
+              <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>Budget by HOD (₹ Cr)</h3>
+                <select
+                  value={budgetByHODYearFilter || budgetSummary.year}
+                  onChange={(e) => {
+                    setBudgetByHODYearFilter(e.target.value);
+                  }}
+                  style={{
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    color: '#333',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="2024-25">2024-25</option>
+                  <option value="2025-26">2025-26</option>
+                  <option value="2026-27">2026-27</option>
+                  <option value="2027-28">2027-28</option>
+                </select>
+              </div>
+              <div style={{ height: 'auto', maxHeight: '340px', overflowY: 'auto', overflowX: 'hidden', padding: '12px 16px' }}>
+                <div className="chart-box large" style={{ height: '300px', minHeight: '300px' }}>
+                  <Bar data={budgetHODStackedBarData} options={budgetHODStackedBarOptions} plugins={[ChartDataLabels]} />
+                </div>
+              </div>
+            </div>
+
+
+        {/* Budget Summary - Vertical Bar with View Filter */}
+        <div className="chart-card" style={{ backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Budget Summary (FY {budgetSummaryYearFilter || budgetSummary.year})</h3>
+            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+              <select
+                value={budgetSummaryYearFilter || budgetSummary.year}
+                onChange={(e) => {
+                  refreshBudgetSummary(e.target.value);
+                }}
+                style={{
+                  padding: '6px 8px',
+                  fontSize: '12px',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  backgroundColor: '#fff',
+                  color: '#333',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="2024-25">2024-25</option>
+                <option value="2025-26">2025-26</option>
+                <option value="2026-27">2026-27</option>
+                <option value="2027-28">2027-28</option>
+              </select>
+              <select
+                value={selectedBudgetView}
+                onChange={(e) => setSelectedBudgetView(e.target.value)}
+                style={{
+                  padding: '6px 8px',
+                  fontSize: '12px',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  backgroundColor: '#fff',
+                  color: '#333',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="overall">Overall Budget</option>
+                <option value="status">Budget Status</option>
+              </select>
+            </div>
+          </div>
+          <div className="chart-card-body" style={{ height: '240px', padding: '12px 14px' }}>
+            <Bar data={budgetSummaryChartData} options={budgetSummaryChartOptions} plugins={[ChartDataLabels]} />
+          </div>
+        </div>
+
         {/* Budget Breakdown Enhanced Card - Government Style */}
         <div className="chart-card" style={{ gridColumn: '2 / 3', backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3446,7 +3228,142 @@ if (!isNaN(safeTotal)) {
             </div>
           </div>
         </div>
-        {/* <div className="chart-card">
+      </div>
+
+       
+{/* <div className="stat-card teal" style={{ cursor: 'pointer' }} onClick={() => navigate('/attendance?period=today')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ backgroundColor: '#e0f2f1', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiClock style={{ color: '#00897B', fontSize: '24px' }} />
+            </div>
+            <div>
+              <h4 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.todayAttendance?.total || 0}</h4>
+              <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#666' }}>Today's Attendance</p>
+              
+               <div className="trend" style={{ fontSize: '11px', display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
+              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=present'); }} style={{ color: '#4CAF50', cursor: 'pointer' }}>{stats.todayAttendance?.present || 0} Present</span>
+              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=late'); }} style={{ color: '#FF9800', cursor: 'pointer' }}>{stats.todayAttendance?.late || 0} Late</span>
+              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=absent'); }} style={{ color: '#F44336', cursor: 'pointer' }}>{stats.todayAttendance?.absent || 0} Absent</span>
+              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=half_day'); }} style={{ color: '#9C27B0', cursor: 'pointer' }}>{stats.todayAttendance?.halfDay || 0} Half</span>
+            </div>
+            </div>
+          </div>
+        </div> */}
+      {/* Quick Stats - Hidden as cards moved to main grid */}
+      {/* <div className="quick-stats" style={{ display: 'none' }}>
+
+        <div className="quick-stat">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ backgroundColor: '#e8f5e9', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiTrendingUp style={{ color: '#4CAF50', fontSize: '20px' }} />
+            </div>
+            <div>
+              <h4>{formatCurrency(quickStats.utilizedBudget)}</h4>
+              <p>Budget Utilized ({quickStats.budgetUtilization}%)</p>
+            </div>
+          </div>
+        </div>
+        <div className="quick-stat">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ backgroundColor: '#e3f2fd', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BiWallet style={{ color: '#2196F3', fontSize: '20px' }} />
+            </div>
+            <div>
+              <h4>{formatCurrency(quickStats.remainingBudget)}</h4>
+              <p>Remaining Budget</p>
+            </div>
+          </div>
+        </div>
+        <div className="quick-stat">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ backgroundColor: '#fff3e0', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiMapPin style={{ color: '#FF9800', fontSize: '20px' }} />
+            </div>
+            <div>
+              <h4>{quickStats.districtsCovered}</h4>
+              <p>Districts Covered</p>
+            </div>
+          </div>
+        </div>
+        <div className="quick-stat" onClick={() => window.location.href = '/beneficiaries'} style={{ cursor: 'pointer' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ backgroundColor: '#fce4ec', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <HiOutlineUserGroup style={{ color: '#E91E63', fontSize: '20px' }} />
+            </div>
+            <div>
+              <h4>{formatBeneficiaries(quickStats.beneficiaries)}</h4>
+              <p>Beneficiaries</p>
+              <p>View & manage</p>
+            </div>
+          </div>
+        </div> */}
+        {/* <div className="quick-stat">
+          <h4>{quickStats.attendanceRate}%</h4>
+          <p>Attendance Rate</p>
+        </div> */}
+        
+      {/* </div> */}
+      {/* Charts - 2x2 Grid Layout */}
+      <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+        {/* Chart 1: HOD Revenue - Donut Chart with center text */}
+        <div className="chart-card">
+          <div className="chart-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3><FiPieChart /> HOD Revenue {chartFilters.revenue.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.revenue.hod_id))?.name})</span>}</h3>
+            <div className="chart-filter-container" style={{ position: 'relative' }}>
+              <FiFilter 
+                style={{ cursor: 'pointer', color: chartFilters.revenue.hod_id ? '#2e7d32' : '#666', fontSize: '18px' }} 
+                title="Filter" 
+                onClick={(e) => { e.stopPropagation(); toggleFilterDropdown('revenue'); }}
+              />
+              {renderFilterDropdown('revenue')}
+            </div>
+          </div>
+          <div className="chart-card-body">
+            <div className="chart-container" style={{ cursor: 'pointer', height: '240px', position: 'relative' }}>
+              <Doughnut data={hodRevenueChartData} options={hodRevenuePieOptions} plugins={[ChartDataLabels, revenueCenterTextPlugin]} />
+            </div>
+          </div>
+        </div>
+
+        {/* Chart 2: Schemes (HOD wise) - Bar + Line Combined Chart */}
+        <div className="chart-card">
+          <div className="chart-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <h3><FiBarChart2 /> {isSchemeWiseView ? 'Schemes (Scheme wise)' : 'Schemes (HOD wise)'} {chartFilters.schemes.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.schemes.hod_id))?.name})</span>}</h3>
+              {isSchemeWiseView && (
+                <div style={{ display: 'flex', gap: '10px', fontSize: '11px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(76, 175, 80, 0.8)' }}></span> Completed
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(255, 193, 7, 0.8)' }}></span> Planned
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(33, 150, 243, 0.8)' }}></span> Active
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="chart-filter-container" style={{ position: 'relative' }}>
+              <FiFilter 
+                style={{ cursor: 'pointer', color: chartFilters.schemes.hod_id ? '#2e7d32' : '#666', fontSize: '18px' }} 
+                title="Filter" 
+                onClick={(e) => { e.stopPropagation(); toggleFilterDropdown('schemes'); }}
+              />
+              {renderFilterDropdown('schemes')}
+            </div>
+          </div>
+          <div className="chart-card-body">
+            <div className="chart-container" style={{ cursor: 'pointer', height: '240px' }}>
+              <Bar data={schemesHODBarLineData} options={schemesBarLineOptions} />
+            </div>
+          </div>
+        </div>
+
+        {/* Chart 3: Budget (HOD wise) */}
+   
+        {/* Chart 4: Attendance (HOD wise) - Bar Chart */}
+        <div className="chart-card">
           <div className="chart-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3><FiBarChart2 /> Attendance (HOD wise) {chartFilters.attendance.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.attendance.hod_id))?.name})</span>}</h3>
             <div className="chart-filter-container" style={{ position: 'relative' }}>
@@ -3463,7 +3380,7 @@ if (!isNaN(safeTotal)) {
               <Bar data={attendanceHODBarChartData} options={attendanceBarChartOptions} plugins={[ChartDataLabels]} />
             </div>
           </div>
-        </div> */}
+        </div>
       </div>
       </div>
       {/* End Scrollable Charts Container */}

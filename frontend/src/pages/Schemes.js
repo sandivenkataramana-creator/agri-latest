@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import Modal from '../components/Modal';
-import { FiPlus, FiFilter, FiUpload, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiUpload, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { createScheme, updateScheme, deleteScheme, getHODs, getCategories } from '../services/api';
 import './Schemes.css';
@@ -82,7 +82,7 @@ const Schemes = () => {
       const fetchFinancialData = async () => {
         try {
           console.log('useEffect: Financial year changed to', financialYear, 'fetching data...');
-          const response = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`);
+          const response = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}&_t=₹{Date.now()}`);
           const data = await response.json();
           console.log('useEffect: Fetched', data.length, 'records for year', financialYear);
           setFinancialRows(Array.isArray(data) ? data : []);
@@ -117,7 +117,7 @@ const Schemes = () => {
       const [hodsRes, categoriesRes, financialRes] = await Promise.all([
         getHODs(),
         getCategories(),
-        fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`) // Add cache-buster
+        fetch(`http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}&_t=₹{Date.now()}`) // Add cache-buster
           .then(res => res.json())
           .catch(err => {
             console.error('Error fetching financial progress:', err);
@@ -142,7 +142,7 @@ const Schemes = () => {
 
   const fetchStateSchemeData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/all?year=${financialYear}&_t=${Date.now()}`);
+      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/all?year=₹{financialYear}&_t=₹{Date.now()}`);
       const data = await response.json();
       setStateSchemeData(Array.isArray(data) ? data : []);
       console.log('State scheme data fetched:', data);
@@ -154,7 +154,7 @@ const Schemes = () => {
 
   const fetchRevenueData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/revenue/all?year=${financialYear}&_t=${Date.now()}`);
+      const response = await fetch(`http://localhost:5000/api/schemes/revenue/all?year=₹{financialYear}&_t=₹{Date.now()}`);
       const data = await response.json();
       setRevenueData(Array.isArray(data) ? data : []);
       console.log('Revenue data fetched:', data);
@@ -170,7 +170,7 @@ const Schemes = () => {
 const fetchCentralSchemes = async (year = financialYear) => {
   try {
     const res = await fetch(
-      `http://localhost:5000/api/schemes/financial-progress?year=${year}&_t=${Date.now()}`
+      `http://localhost:5000/api/schemes/financial-progress?year=₹{year}&_t=₹{Date.now()}`
     );
     const data = await res.json();
 
@@ -421,7 +421,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
     const ok = window.confirm('Are you sure you want to delete this state scheme?');
     if (!ok) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/${row.id}`, {
+      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/₹{row.id}`, {
         method: 'DELETE'
       });
       if (!response.ok) {
@@ -440,7 +440,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
     const ok = window.confirm('Are you sure you want to delete this revenue entry?');
     if (!ok) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/revenue/${row.id}`, {
+      const response = await fetch(`http://localhost:5000/api/schemes/revenue/₹{row.id}`, {
         method: 'DELETE'
       });
       if (!response.ok) {
@@ -551,7 +551,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
 
         const isEditing = editingItem?.type === 'state-scheme' && editingItem?.id;
         const url = isEditing
-          ? `http://localhost:5000/api/schemes/state-schemes/${editingItem.id}`
+          ? `http://localhost:5000/api/schemes/state-schemes/₹{editingItem.id}`
           : 'http://localhost:5000/api/schemes/state-schemes';
 
         const response = await fetch(url, {
@@ -584,7 +584,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
 
         const isEditing = editingItem?.type === 'revenue' && editingItem?.id;
         const url = isEditing
-          ? `http://localhost:5000/api/schemes/revenue/${editingItem.id}`
+          ? `http://localhost:5000/api/schemes/revenue/₹{editingItem.id}`
           : 'http://localhost:5000/api/schemes/revenue';
 
         const response = await fetch(url, {
@@ -622,7 +622,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '');
+        .replace(/^_+|_+₹/g, '');
       if (normalizedKey) {
         normalized[normalizedKey] = value;
       }
@@ -668,7 +668,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
   //       const year = date.getFullYear();
   //       const month = String(date.getMonth() + 1).padStart(2, '0');
   //       const day = String(date.getDate()).padStart(2, '0');
-  //       return `${year}-${month}-${day}`;
+  //       return `₹{year}-₹{month}-₹{day}`;
   //     }
   //     return null;
   //   }
@@ -683,7 +683,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
   //       const year = date.getFullYear();
   //       const month = String(date.getMonth() + 1).padStart(2, '0');
   //       const day = String(date.getDate()).padStart(2, '0');
-  //       return `${year}-${month}-${day}`;
+  //       return `₹{year}-₹{month}-₹{day}`;
   //     }
   //   }
     
@@ -724,7 +724,7 @@ const parseExcelDate = (value) => {
     const year = date.getUTCFullYear();
 
     // Γ£à Store EXACT Excel date
-    return `${year}-${month}-${day}`;
+    return `₹{year}-₹{month}-₹{day}`;
   }
 
   // String date (already typed)
@@ -734,7 +734,7 @@ const parseExcelDate = (value) => {
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      return `${year}-${month}-${day}`;
+      return `₹{year}-₹{month}-₹{day}`;
     }
   }
 
@@ -759,7 +759,7 @@ const parseExcelDate = (value) => {
             normalizedRow[key] !== undefined && normalizedRow[key] !== '' && normalizedRow[key] !== '-') {
           // Make sure it's not the count column
           if (!key.includes('count') && !key.includes('_no') && !key.includes('bills_count')) {
-            console.log(`Found amount column for ${fieldName}: key="${key}", value="${normalizedRow[key]}"`);
+            console.log(`Found amount column for ₹{fieldName}: key="₹{key}", value="₹{normalizedRow[key]}"`);
             return normalizedRow[key];
           }
         }
@@ -772,7 +772,7 @@ const parseExcelDate = (value) => {
             normalizedRow[key] !== undefined && normalizedRow[key] !== '' && normalizedRow[key] !== '-') {
           // Make sure it's not the amount column
           if (!key.includes('amount') && !key.includes('_cr')) {
-            console.log(`Found count column for ${fieldName}: key="${key}", value="${normalizedRow[key]}"`);
+            console.log(`Found count column for ₹{fieldName}: key="₹{key}", value="₹{normalizedRow[key]}"`);
             return normalizedRow[key];
           }
         }
@@ -882,7 +882,7 @@ const parseExcelDate = (value) => {
       }
     } catch (err) {
       console.error('Import error:', err);
-      alert(`Import failed: ${err.message}`);
+      alert(`Import failed: ₹{err.message}`);
     } finally {
       setImporting(false);
       fileInputRef.current.value = ''; // Reset file input
@@ -893,7 +893,7 @@ const parseExcelDate = (value) => {
     try {
       // CRITICAL: Fetch existing schemes BEFORE import to check for updates
       console.log('Fetching existing schemes for update check...');
-      const existingResponse = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}`);
+      const existingResponse = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}`);
       const existingSchemes = await existingResponse.json();
       console.log('Existing schemes loaded:', { count: existingSchemes.length, schemes: existingSchemes.map(s => ({ id: s.id, name: s.scheme_name, year: s.financial_year })) });
       
@@ -1172,12 +1172,12 @@ if (
             }
           }
 
-          console.log(`\nΓ£à IMPORT SUMMARY:\n  Successful: ${successCount}\n  Failed: ${errorCount}\n  Skipped headers: ${skippedHeaderRows}\n  Total processed: ${jsonData.length}\n`);
-          alert(`Γ£à Import completed!\n\nSuccessful: ${successCount}\nFailed: ${errorCount}\nSkipped headers: ${skippedHeaderRows}\n\nNote: Check console (F12) to see which schemes were UPDATED vs CREATED`);
+          console.log(`\nΓ£à IMPORT SUMMARY:\n  Successful: ₹{successCount}\n  Failed: ₹{errorCount}\n  Skipped headers: ₹{skippedHeaderRows}\n  Total processed: ₹{jsonData.length}\n`);
+          alert(`Γ£à Import completed!\n\nSuccessful: ₹{successCount}\nFailed: ₹{errorCount}\nSkipped headers: ₹{skippedHeaderRows}\n\nNote: Check console (F12) to see which schemes were UPDATED vs CREATED`);
           await fetchCentralSchemes();
           // Clear existing data and refresh from database
           console.log('Clearing cached data and refreshing from database...');
-          // setImportStatus(`Importing... (${successCount} successful, fetching updated data)`); // NEW
+          // setImportStatus(`Importing... (₹{successCount} successful, fetching updated data)`); // NEW
           // setFinancialRows([]); // Clear old data first
           
           // // Wait for database operations to complete with retry logic
@@ -1187,7 +1187,7 @@ if (
           //   console.log('Current financialRows count:', financialRows.length);
           //   console.log('Fetching fresh data from database (Attempt 1)...');
           //   try {
-          //     const fetchUrl = `http://localhost:5000/api/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`;
+          //     const fetchUrl = `http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}&_t=₹{Date.now()}`;
           //     console.log('Fetch URL:', fetchUrl);
           //     const response = await fetch(fetchUrl);
           //     console.log('Response status:', response.status);
@@ -1208,7 +1208,7 @@ if (
           //       // Retry after additional wait
           //       console.warn('Γ¥î No data received on Attempt 1, retrying after 1 second...');
           //       setTimeout(async () => {
-          //         const retryUrl = `http://localhost:5000/api/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`;
+          //         const retryUrl = `http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}&_t=₹{Date.now()}`;
           //         const retryResponse = await fetch(retryUrl);
           //         const retryData = await retryResponse.json();
           //         console.log('Fresh data received on retry:', { count: retryData.length, firstItem: retryData[0] });
@@ -1328,9 +1328,9 @@ const stateSchemeData = {
 
       alert(
         `Γ£à State Scheme Import Completed\n\n` +
-        `Successful: ${successCount}\n` +
-        `Failed: ${errorCount}\n` +
-        `Skipped: ${skipped}`
+        `Successful: ₹{successCount}\n` +
+        `Failed: ₹{errorCount}\n` +
+        `Skipped: ₹{skipped}`
       );
 
       await fetchStateSchemeData();
@@ -1369,7 +1369,7 @@ const stateSchemeData = {
   //         if (index === 0) {
   //           console.log('State Scheme normalized columns:', Object.keys(normalizedRow));
   //           console.log('State Scheme first row data:', normalizedRow);
-  //           console.log('All normalized row keys:', Object.keys(normalizedRow).map(k => `"${k}"`).join(', '));
+  //           console.log('All normalized row keys:', Object.keys(normalizedRow).map(k => `"₹{k}"`).join(', '));
   //         }
           
   //         try {
@@ -1387,14 +1387,14 @@ const stateSchemeData = {
   //           }
 
   //           // Skip rows where scheme name is just a number or SL. NO
-  //           if (!schemeName || schemeName.toString().trim() === '' || /^\d+$/.test(schemeName.toString().trim())) {
+  //           if (!schemeName || schemeName.toString().trim() === '' || /^\d+₹/.test(schemeName.toString().trim())) {
   //             skippedHeaderRows++;
   //             console.log('Skipped row with invalid scheme name:', { index: index + 1, name: schemeName, hod });
   //             continue;
   //           }
 
   //           // Skip rows where HoD is just a number (likely empty or misaligned columns)
-  //           if (!hod || hod.toString().trim() === '' || (/^\d+$/.test(hod.toString().trim()) && hod.toString().length < 3)) {
+  //           if (!hod || hod.toString().trim() === '' || (/^\d+₹/.test(hod.toString().trim()) && hod.toString().length < 3)) {
   //             errorCount++;
   //             console.warn('Skipping row - invalid HoD:', { index: index + 1, name: schemeName, hod });
   //             continue;
@@ -1402,7 +1402,7 @@ const stateSchemeData = {
 
   //           // Simple and direct column value extraction for all fields
   //           const allKeys = Object.keys(normalizedRow);
-  //           console.log(`Row ${index + 1} available columns:`, allKeys);
+  //           console.log(`Row ₹{index + 1} available columns:`, allKeys);
             
   //           const stateSchemeData = {
   //             name: schemeName,
@@ -1460,8 +1460,8 @@ const stateSchemeData = {
   //         }
   //       }
 
-  //       console.log(`State Scheme Import Summary: Successful: ${successCount}, Failed: ${errorCount}, Skipped headers: ${skippedHeaderRows}`);
-  //       alert(`Γ£à State Scheme Import completed!\n\nSuccessful: ${successCount}\nFailed: ${errorCount}\nSkipped headers: ${skippedHeaderRows}`);
+  //       console.log(`State Scheme Import Summary: Successful: ₹{successCount}, Failed: ₹{errorCount}, Skipped headers: ₹{skippedHeaderRows}`);
+  //       alert(`Γ£à State Scheme Import completed!\n\nSuccessful: ₹{successCount}\nFailed: ₹{errorCount}\nSkipped headers: ₹{skippedHeaderRows}`);
         
   //       // Refresh state scheme data
   //       await fetchStateSchemeData();
@@ -1539,9 +1539,9 @@ const stateSchemeData = {
 
 alert(
   `Γ£à Import completed!\n\n` +
-  `Successful: ${successCount}\n` +
-  `Failed: ${errorCount}\n` +
-  `Skipped headers: ${skippedHeaderRows}\n\n` +
+  `Successful: ₹{successCount}\n` +
+  `Failed: ₹{errorCount}\n` +
+  `Skipped headers: ₹{skippedHeaderRows}\n\n` +
   `Note: Check console (F12) to see which schemes were UPDATED vs CREATED`
 );
 
@@ -1570,7 +1570,7 @@ await fetchRevenueData();
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yy = String(d.getFullYear()).slice(-2);
-  return `${dd}-${mm}-${yy}`; // EXACT like your Excel
+  return `₹{dd}-₹{mm}-₹{yy}`; // EXACT like your Excel
 };
 
 
@@ -1664,14 +1664,14 @@ await fetchRevenueData();
   XLSX.utils.sheet_add_aoa(
     worksheet,
     dataRows,
-    { origin: `A${startRow}` } // ≡ƒæê IMPORTANT
+    { origin: `A₹{startRow}` } // ≡ƒæê IMPORTANT
   );
 
   /* ===============================
      4∩╕ÅΓâú DOWNLOAD SAME EXCEL
      =============================== */
 
-  XLSX.writeFile(workbook, `${filterType}_${financialYear}.xlsx`);
+  XLSX.writeFile(workbook, `₹{filterType}_₹{financialYear}.xlsx`);
 };
 
 
@@ -1710,14 +1710,14 @@ await fetchRevenueData();
       <div className="table-card" style={{ marginTop: '24px', width: '100%' }}>
         <div className="table-header">
           <h3>
-            {filterType === 'central-sponsored-scheme' && `Financial Progress Report (CSS) ${financialYear}`}
+            {filterType === 'central-sponsored-scheme' && `Financial Progress Report (CSS) ₹{financialYear}`}
             {filterType === 'state-scheme' && 'State Scheme'}
             {filterType === 'revenue' && 'Revenue'}
           </h3>
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-            {filterType === 'central-sponsored-scheme' && `Loaded: ${financialRows.length} records`}
-            {filterType === 'state-scheme' && `Loaded: ${stateSchemeData.length} records`}
-            {filterType === 'revenue' && `Loaded: ${revenueData.length} records`}
+            {filterType === 'central-sponsored-scheme' && `Loaded: ₹{financialRows.length} records`}
+            {filterType === 'state-scheme' && `Loaded: ₹{stateSchemeData.length} records`}
+            {filterType === 'revenue' && `Loaded: ₹{revenueData.length} records`}
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <select 
