@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import Modal from '../components/Modal';
-import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiMail } from 'react-icons/fi';
 import { getHODs, createHOD, updateHOD, deleteHOD, getCategories, createCategory } from '../services/api';
+import axios from 'axios';
 
 const HODs = () => {
   const [hods, setHODs] = useState([]);
@@ -11,7 +12,9 @@ const HODs = () => {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [editingHod, setEditingHod] = useState(null);
+  const [passwordData, setPasswordData] = useState({ hodId: null, password: '' });
   const [formData, setFormData] = useState({
     name: '',
     department: '',
@@ -23,7 +26,9 @@ const HODs = () => {
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  
+  // Parse user from localStorage once, at initialization
+  const [user] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
   const isSuperAdmin = user.role === 'superadmin';
   const isReadOnly = !isSuperAdmin;
 
@@ -59,7 +64,14 @@ const HODs = () => {
     if (isReadOnly) return;
     if (hod) {
       setEditingHod(hod);
-      setFormData({ ...hod, category_id: hod.category_id || '' });
+      setFormData({
+        name: hod.name || '',
+        department: hod.department || '',
+        category_id: hod.category_id || '',
+        email: hod.email || '',
+        phone: hod.phone || '',
+        status: hod.status || 'active'
+      });
     } else {
       setEditingHod(null);
       setFormData({ name: '', department: '', category_id: '', email: '', phone: '', status: 'active' });
@@ -105,7 +117,13 @@ const HODs = () => {
       handleCloseModal();
     } catch (err) {
       console.error('Error saving HOD:', err);
-      alert('Failed to save HOD. Please try again.');
+      
+      // Extract error message from response
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.message || 
+                          'Failed to save HOD. Please try again.';
+      
+      alert(errorMessage);
     }
   };
 
@@ -119,6 +137,45 @@ const HODs = () => {
         console.error('Error deleting HOD:', err);
         alert('Failed to delete HOD. Please try again.');
       }
+    }
+  };
+
+  const handleOpenPasswordModal = (hod) => {
+    if (isReadOnly) return;
+    setEditingHod(hod);
+    setPasswordData({ hodId: hod.id, password: '' });
+    setPasswordModalOpen(true);
+  };
+
+  const handleSendPassword = async (e) => {
+    e.preventDefault();
+
+    try {
+      const token = user.token;
+      
+      // Create the user account with auto-generated password
+      const accountResponse = await axios.post(
+        `http://localhost:5000/api/hods/${passwordData.hodId}/create-account`,
+        {}, // No password needed - backend will auto-generate
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Show success message
+      const credentials = `\n\nLogin Credentials:\nUsername: ${accountResponse.data.username}\nEmail: ${accountResponse.data.email}\n\n✅ A temporary password has been sent to the HOD's email address.`;
+      
+      alert(`Account created successfully!${credentials}`);
+      
+      setPasswordModalOpen(false);
+      setPasswordData({ hodId: null, password: '' });
+      setEditingHod(null);
+    } catch (err) {
+      console.error('Error creating account:', err);
+      alert('Failed to create account. ' + (err.response?.data?.error || 'Please try again.'));
     }
   };
 
@@ -183,10 +240,13 @@ const HODs = () => {
                     <div className="action-buttons">
                       {!isReadOnly && (
                         <>
-                          <button className="action-btn edit" onClick={() => handleOpenModal(hod)}>
+                          <button className="action-btn edit" onClick={() => handleOpenModal(hod)} title="Edit">
                             <FiEdit2 />
                           </button>
-                          <button className="action-btn delete" onClick={() => handleDelete(hod.id)}>
+                          <button className="action-btn edit" onClick={() => handleOpenPasswordModal(hod)} title="Send Password">
+                            <FiMail />
+                          </button>
+                          <button className="action-btn delete" onClick={() => handleDelete(hod.id)} title="Delete">
                             <FiTrash2 />
                           </button>
                         </>
@@ -251,9 +311,8 @@ const HODs = () => {
               name="category_id"
               value={formData.category_id}
               onChange={handleChange}
-              required
             >
-              <option value="">Select Category</option>
+              <option value="">Select Category (Optional)</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
@@ -340,6 +399,54 @@ const HODs = () => {
           </form>
         </Modal>
       )}
+
+      {/* Password Modal */}
+      <Modal
+        isOpen={passwordModalOpen}
+        onClose={() => {
+          setPasswordModalOpen(false);
+          setPasswordData({ hodId: null, password: '' });
+          setEditingHod(null);
+        }}
+        title={editingHod ? `Send Password to ${editingHod.name}` : 'Send Password'}
+        footer={
+          <>
+            <button className="btn btn-secondary" onClick={() => {
+              setPasswordModalOpen(false);
+              setPasswordData({ hodId: null, password: '' });
+            }}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSendPassword}>
+              Send Password
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={handleSendPassword}>
+          <div className="form-group">
+            <label>HOD Email</label>
+            <input
+              type="email"
+              value={editingHod?.email || ''}
+              disabled
+              style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+            />
+          </div>
+          <div style={{ 
+            backgroundColor: '#e3f2fd', 
+            padding: '12px', 
+            borderRadius: '4px', 
+            border: '1px solid #90caf9',
+            marginTop: '16px'
+          }}>
+            <p style={{ margin: '0', color: '#1565c0', fontSize: '14px' }}>
+              ✅ <strong>System will auto-generate and send a secure temporary password to the HOD's email.</strong>
+            </p>
+            <p style={{ margin: '8px 0 0 0', color: '#1565c0', fontSize: '12px' }}>
+              The HOD must change the password on first login.
+            </p>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

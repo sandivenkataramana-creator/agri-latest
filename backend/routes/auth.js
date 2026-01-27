@@ -88,6 +88,16 @@ router.post('/login', async (req, res) => {
     // Update last login
     await db.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
+    // If this is a HOD, get all their mapped departments
+    let departments = [];
+    if (user.role === 'hod' && user.hod_id) {
+      const [deptMappings] = await db.query(
+        'SELECT department_name FROM hod_department_mapping WHERE hod_id = ?',
+        [user.hod_id]
+      );
+      departments = deptMappings.map(d => d.department_name);
+    }
+
     // Return user data (without password)
     const userData = {
       id: user.id,
@@ -98,6 +108,7 @@ router.post('/login', async (req, res) => {
       hod_id: user.hod_id,
       staff_id: user.staff_id,
       department: user.department,
+      departments: departments, // All departments for HOD
       password_changed: user.password_changed || false
     };
 

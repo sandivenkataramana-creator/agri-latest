@@ -1,25 +1,36 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+// Debug: Log SMTP configuration on startup
+console.log('Email Service Initializing...');
+console.log('SMTP_HOST:', process.env.SMTP_HOST);
+console.log('SMTP_PORT:', process.env.SMTP_PORT);
+console.log('SMTP_USER:', process.env.SMTP_USER ? '✓ Configured' : '✗ Missing');
+console.log('SMTP_PASSWORD:', process.env.SMTP_PASSWORD ? '✓ Configured' : '✗ Missing');
+
 // Create reusable transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: process.env.SMTP_PORT || 587,
+  port: parseInt(process.env.SMTP_PORT) || 587,
   secure: false, // true for 465, false for other ports
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD
+  },
+  tls: {
+    rejectUnauthorized: false // Allow self-signed certificates (for Gmail)
   }
 });
 
 // Verify transporter configuration (don't crash if it fails)
 transporter.verify()
   .then(() => {
-    console.log('SMTP Server is ready to send emails');
+    console.log('✓ SMTP Server is ready to send emails');
   })
   .catch((error) => {
-    console.log('SMTP Configuration Error:', error.message || error);
-    console.log('Email functionality will be disabled. Server will continue running.');
+    console.log('✗ SMTP Configuration Error:', error.message || error);
+    console.log('Email functionality will be limited. Server will continue running.');
+    console.log('Make sure SMTP credentials are correct in .env file');
   });
 
 // Email templates
@@ -168,15 +179,27 @@ const emailTemplates = {
 };
 
 // Send email function
-const sendEmail = async (to, subject, html) => {
-  try {
+const sendEmail = (to, subject, html) => {
+  return new Promise((resolve, reject) => {
+    console.log(`\n📧 EMAIL SEND REQUEST`);
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`SMTP Credentials Check:`);
+    console.log(`  SMTP_USER: ${process.env.SMTP_USER ? '✓ Set' : '✗ Missing'}`);
+    console.log(`  SMTP_PASSWORD: ${process.env.SMTP_PASSWORD ? '✓ Set' : '✗ Missing'}`);
+    
     if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
-      console.warn('SMTP credentials not configured. Email not sent.');
-      console.log('Email would be sent to:', to);
-      console.log('Subject:', subject);
-      return { success: true, message: 'Email service not configured (demo mode)' };
+      console.error('❌ SMTP credentials not configured');
+      resolve({ 
+        success: false, 
+        error: 'SMTP credentials not configured in .env file',
+        message: 'Email service not available'
+      });
+      return;
     }
 
+    console.log(`📧 Attempting to send email...`);
+    
     const mailOptions = {
       from: `"HOD Management System" <${process.env.SMTP_USER}>`,
       to: to,
@@ -184,13 +207,25 @@ const sendEmail = async (to, subject, html) => {
       html: html
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Error sending email:', error);
-    return { success: false, error: error.message };
-  }
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error(`\n❌ Error sending email to ${to}`);
+        console.error(`Error message: ${error.message}`);
+        console.error(`Error code: ${error.code}`);
+        console.error(`Full error:`, error);
+        console.error('');
+        resolve({ 
+          success: false, 
+          error: error.message,
+          email: to
+        });
+      } else {
+        console.log(`✅ Email sent successfully to ${to}`);
+        console.log(`Message ID: ${info.messageId}\n`);
+        resolve({ success: true, messageId: info.messageId, email: to });
+      }
+    });
+  });
 };
 
 // Send registration success email
@@ -214,9 +249,98 @@ const sendPasswordChangedEmail = async (email, name, newPassword = null) => {
   return await sendEmail(email, subject, html);
 };
 
+// Send account credentials for HOD or Staff
+const sendAccountCredentials = async (email, username, password, userType = 'HOD') => {
+  console.log(`\n🔐 SENDING ACCOUNT CREDENTIALS EMAIL`);
+  console.log(`User Type: ${userType}`);
+  console.log(`Email: ${email}`);
+  console.log(`Username: ${username}`);
+  
+  const subject = `Your ${userType} Account Credentials - HOD Management System`;
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #1b5e20; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .credentials { background: #fff; padding: 20px; border-left: 4px solid #1b5e20; margin: 20px 0; font-family: 'Courier New', monospace; }
+        .credential-item { margin: 15px 0; }
+        .credential-label { font-weight: bold; color: #1b5e20; }
+        .credential-value { background: #f0f0f0; padding: 8px 12px; border-radius: 4px; margin-top: 5px; word-break: break-all; }
+        .important { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; }
+        .button { display: inline-block; padding: 12px 24px; background: #1b5e20; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Account Created Successfully</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${userType},</p>
+          <p>Your ${userType} account has been created successfully in the HOD Management System. Here are your login credentials:</p>
+          
+          <div class="credentials">
+            <div class="credential-item">
+              <div class="credential-label">Username:</div>
+              <div class="credential-value">${username}</div>
+            </div>
+            <div class="credential-item">
+              <div class="credential-label">Password:</div>
+              <div class="credential-value">${password}</div>
+            </div>
+            <div class="credential-item">
+              <div class="credential-label">Email:</div>
+              <div class="credential-value">${email}</div>
+            </div>
+          </div>
+          
+          <div class="important">
+            <strong>Important Security Notes:</strong>
+            <ul>
+              <li>Keep your credentials confidential and do not share them with anyone</li>
+              <li>Change your password immediately after your first login</li>
+              <li>If you did not request this account, please contact the system administrator immediately</li>
+              <li>Make sure to log out when using shared devices</li>
+            </ul>
+          </div>
+          
+          <p><strong>How to Login:</strong></p>
+          <ol>
+            <li>Visit the login page</li>
+            <li>Enter your username or email</li>
+            <li>Enter your password</li>
+            <li>Click the Login button</li>
+          </ol>
+          
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" class="button">Go to Login</a>
+          
+          <p>If you have any questions or need assistance, please contact the system administrator.</p>
+          
+          <div class="footer">
+            <p>© 2024 Government of Telangana. All Rights Reserved.</p>
+            <p>This is an automated email. Please do not reply.</p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  console.log(`Calling sendEmail function...`);
+  const result = await sendEmail(email, subject, htmlContent);
+  console.log(`sendAccountCredentials result:`, result);
+  return result;
+};
+
 module.exports = {
   sendEmail,
   sendRegistrationEmail,
   sendForgotPasswordEmail,
-  sendPasswordChangedEmail
+  sendPasswordChangedEmail,
+  sendAccountCredentials
 };

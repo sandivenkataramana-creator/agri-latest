@@ -306,8 +306,8 @@ router.get('/stats', async (req, res) => {
       const [totalStaff] = await db.query('SELECT COUNT(*) as count FROM staff WHERE hod_id = ?', [hodId]);
       const [activeStaff] = await db.query('SELECT COUNT(*) as count FROM staff WHERE hod_id = ? AND status = "active"', [hodId]);
 
-      // Today's attendance stats with late status (after 10:30 AM)
-      const [todayAttendance] = await db.query(`
+      // Attendance stats with optional date range filtering
+      let attendanceQuery = `
         SELECT 
           COUNT(*) as total_records,
           COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
@@ -316,8 +316,22 @@ router.get('/stats', async (req, res) => {
           COUNT(CASE WHEN status = 'half_day' THEN 1 END) as half_day,
           COUNT(CASE WHEN status = 'on_leave' OR status = 'leave' THEN 1 END) as on_leave
         FROM attendance 
-        WHERE DATE(date) = CURDATE() AND hod_id = ?
-      `, [hodId]);
+        WHERE hod_id = ?`;
+      const attendanceParams = [hodId];
+      
+      // Apply date range if provided
+      if (req.query.date_start && req.query.date_end) {
+        attendanceQuery += ` AND DATE(date) BETWEEN ? AND ?`;
+        attendanceParams.push(req.query.date_start, req.query.date_end);
+      } else if (req.query.date_start) {
+        attendanceQuery += ` AND DATE(date) = ?`;
+        attendanceParams.push(req.query.date_start);
+      } else {
+        // Default to today if no date specified
+        attendanceQuery += ` AND DATE(date) = CURDATE()`;
+      }
+      
+      const [todayAttendance] = await db.query(attendanceQuery, attendanceParams);
 
       let budgetSql = `SELECT COALESCE(SUM(allocated_amount), 0) as total, COALESCE(SUM(utilized_amount), 0) as utilized FROM budget WHERE hod_id = ?`;
       const budgetParams = [hodId];
@@ -354,8 +368,8 @@ router.get('/stats', async (req, res) => {
     const [totalStaff] = await db.query('SELECT COUNT(*) as count FROM staff');
     const [activeStaff] = await db.query('SELECT COUNT(*) as count FROM staff WHERE status = "active"');
 
-    // Today's attendance stats with late status (after 10:30 AM)
-    const [todayAttendance] = await db.query(`
+    // Attendance stats with optional date range filtering
+    let attendanceQuery = `
       SELECT 
         COUNT(*) as total_records,
         COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
@@ -364,8 +378,22 @@ router.get('/stats', async (req, res) => {
         COUNT(CASE WHEN status = 'half_day' THEN 1 END) as half_day,
         COUNT(CASE WHEN status = 'on_leave' OR status = 'leave' THEN 1 END) as on_leave
       FROM attendance 
-      WHERE DATE(date) = CURDATE()
-    `);
+      WHERE 1=1`;
+    const attendanceParams = [];
+    
+    // Apply date range if provided
+    if (req.query.date_start && req.query.date_end) {
+      attendanceQuery += ` AND DATE(date) BETWEEN ? AND ?`;
+      attendanceParams.push(req.query.date_start, req.query.date_end);
+    } else if (req.query.date_start) {
+      attendanceQuery += ` AND DATE(date) = ?`;
+      attendanceParams.push(req.query.date_start);
+    } else {
+      // Default to today if no date specified
+      attendanceQuery += ` AND DATE(date) = CURDATE()`;
+    }
+    
+    const [todayAttendance] = await db.query(attendanceQuery, attendanceParams);
 
     const budgetSql = `SELECT COALESCE(SUM(allocated_amount), 0) as total, COALESCE(SUM(utilized_amount), 0) as utilized FROM budget ${budgetFilter.clause}`;
     const [budget] = await db.query(budgetSql, budgetFilter.params);

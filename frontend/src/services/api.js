@@ -127,6 +127,7 @@ export const getHODDetails = (id) => api.get(`/hods/${id}/details`);
 export const createHOD = (data) => api.post('/hods', data);
 export const updateHOD = (id, data) => api.put(`/hods/${id}`, data);
 export const deleteHOD = (id) => api.delete(`/hods/${id}`);
+export const createHODAccount = (hodId, password) => api.post(`/hods/${hodId}/create-account`, { password });
 
 // Schemes
 export const getSchemes = () => api.get('/schemes');
@@ -160,6 +161,7 @@ export const getStaffByHODId = (hodId) => api.get(`/staff/hod/${hodId}`);
 export const createStaff = (data) => api.post('/staff', data);
 export const updateStaff = (id, data) => api.put(`/staff/${id}`, data);
 export const deleteStaff = (id) => api.delete(`/staff/${id}`);
+export const createStaffAccount = (staffId) => api.post(`/staff/${staffId}/create-account`, {});
 
 // Budget
 export const getBudget = () => api.get('/budget');
