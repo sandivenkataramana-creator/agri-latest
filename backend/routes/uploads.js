@@ -1,52 +1,5 @@
-// Delete flagship_program file with reason tracking (for HODs)
-router.delete('/flagship-program/:id', [authenticateJWT, requireRole('hod')], async (req, res) => {
-  try {
-    const fileId = req.params.id;
-    // const { reason } = req.body;
-    const user = req.user;
-    if (!reason || !reason.trim()) {
-  return res.status(400).json({ error: 'Deletion reason is required' });
-}
-
-    const [file] = await db.query(
-      `SELECT hu.*, h.name as hod_name, h.department
-       FROM hod_uploads hu
-       LEFT JOIN hods h ON hu.hod_id = h.id
-       WHERE hu.id = ? AND hu.hod_id = ? AND hu.upload_type = 'flagship_program'`,
-      [fileId, user.hod_id]
-    );
-
-    if (!file || file.length === 0) {
-      return res.status(404).json({ error: 'File not found' });
-    }
-
-    const fileRecord = file[0];
-
-    // Log the deletion in file_deletion_logs
-    await db.query(
-      `INSERT INTO file_deletion_logs (file_id, file_name, hod_id, hod_name, department, upload_type, deletion_reason, deleted_by, deleted_by_name)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [fileId, fileRecord.file_name, fileRecord.hod_id, fileRecord.hod_name, fileRecord.department, fileRecord.upload_type, reason, user.id, user.name]
-    );
-
-    // Soft delete: set status to 'deleted' instead of hard delete
-    await db.query(
-      `UPDATE hod_uploads SET status = 'deleted', deleted_reason = ? WHERE id = ?`,
-      [reason, fileId]
-    );
-
-    res.json({ success: true, message: 'Flagship programme file deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting flagship programme file:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 const express = require('express');
 const router = express.Router();
-// Debug route to verify router mounting
-router.get('/test', (req, res) => {
-  res.json({ ok: true, message: 'Uploads router is working.' });
-});
 const db = require('../config/database');
 const { authenticateJWT, requireRole } = require('../middleware/auth');
 const multer = require('multer');
@@ -55,6 +8,11 @@ const fs = require('fs');
 const PDFDocument = require('pdfkit');
 const { Document, Packer, Paragraph, TextRun } = require('docx');
 const XLSX = require('xlsx');
+
+// Debug route to verify router mounting
+router.get('/test', (req, res) => {
+  res.json({ ok: true, message: 'Uploads router is working.' });
+});
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -123,6 +81,51 @@ const initializeTable = async () => {
 
 // Initialize tables on module load
 initializeTable();
+
+// Delete flagship_program file with reason tracking (for HODs)
+router.delete('/flagship-program/:id', [authenticateJWT, requireRole('hod')], async (req, res) => {
+  try {
+    const fileId = req.params.id;
+    const { reason } = req.body;
+    const user = req.user;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Deletion reason is required' });
+    }
+
+    const [file] = await db.query(
+      `SELECT hu.*, h.name as hod_name, h.department
+       FROM hod_uploads hu
+       LEFT JOIN hods h ON hu.hod_id = h.id
+       WHERE hu.id = ? AND hu.hod_id = ? AND hu.upload_type = 'flagship_program'`,
+      [fileId, user.hod_id]
+    );
+
+    if (!file || file.length === 0) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const fileRecord = file[0];
+
+    // Log the deletion in file_deletion_logs
+    await db.query(
+      `INSERT INTO file_deletion_logs (file_id, file_name, hod_id, hod_name, department, upload_type, deletion_reason, deleted_by, deleted_by_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [fileId, fileRecord.file_name, fileRecord.hod_id, fileRecord.hod_name, fileRecord.department, fileRecord.upload_type, reason, user.id, user.name]
+    );
+
+    // Soft delete: set status to 'deleted' instead of hard delete
+    await db.query(
+      `UPDATE hod_uploads SET status = 'deleted', deleted_reason = ? WHERE id = ?`,
+      [reason, fileId]
+    );
+
+    res.json({ success: true, message: 'Flagship programme file deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting flagship programme file:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 //upload flagship program endpoint (for HOD users)
 // router.post('/flagship-program', [authenticateJWT, requireRole('hod')], upload.single('file'), async (req, res) => {

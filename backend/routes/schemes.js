@@ -2,6 +2,22 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
+// Get available financial years
+router.get('/available-years', async (req, res) => {
+  try {
+    const [results] = await db.query(`
+      SELECT DISTINCT financial_year
+      FROM schemes
+      WHERE financial_year IS NOT NULL
+      ORDER BY financial_year DESC
+    `);
+    const years = results.map(r => r.financial_year);
+    res.json(years);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all schemes with budget allocation
 router.get('/', async (req, res) => {
   try {

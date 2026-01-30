@@ -37,6 +37,7 @@ async function authenticateJWT(req, res, next) {
       return res.status(401).json({ error: 'User not found' });
     }
     req.user = { ...payload, ...rows[0] };
+    console.log('[authenticateJWT] Merged user object:', { id: req.user.id, role: req.user.role, hod_id: req.user.hod_id });
     next();
   } catch (err) {
     console.warn('authenticateJWT: token verification failed:', err.message);
@@ -77,13 +78,19 @@ async function authenticateJWT(req, res, next) {
 const handleUpload = (uploadType) => {
   return async (req, res) => {
     try {
+      console.log('[handleUpload] uploadType:', uploadType);
+      console.log('[handleUpload] req.file:', req.file ? req.file.originalname : 'NO FILE');
+      console.log('[handleUpload] req.user:', req.user);
+      
       if (!req.file) {
+        console.error('[handleUpload] No file in request');
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
       const hodId = req.user?.hod_id;
       if (!hodId) {
-        return res.status(400).json({ error: 'No hod_id' });
+        console.error('[handleUpload] No hod_id in user:', req.user);
+        return res.status(400).json({ error: 'No hod_id found. User must be a HOD.' });
       }
 
       const [hod] = await db.query(
@@ -91,8 +98,9 @@ const handleUpload = (uploadType) => {
         [hodId]
       );
 
-      if (!hod.length) {
-        return res.status(400).json({ error: 'Invalid HOD' });
+      if (!hod || hod.length === 0) {
+        console.error('[handleUpload] HOD not found for id:', hodId);
+        return res.status(400).json({ error: 'Invalid HOD. HOD record not found in database.' });
       }
 
       const fileFormat =
@@ -100,28 +108,40 @@ const handleUpload = (uploadType) => {
 
       const description = req.body.description || '';
 
+      console.log('[handleUpload] Inserting file:', {
+        hodId,
+        fileName: req.file.originalname,
+        filePath: req.file.path,
+        fileFormat,
+        uploadType,
+        description
+      });
+
       const [result] = await db.query(
-  `
-  INSERT INTO hod_uploads
-  (hod_id, file_name, file_path, file_format, upload_type, description)
-  VALUES (?, ?, ?, ?, ?, ?)
-  `,
-  [
-    hodId,
-    req.file.originalname,
-    req.file.path,
-    fileFormat,
-    uploadType,
-    description
-  ]
-);
+        `
+        INSERT INTO hod_uploads
+        (hod_id, file_name, file_path, file_format, upload_type, description)
+        VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        [
+          hodId,
+          req.file.originalname,
+          req.file.path,
+          fileFormat,
+          uploadType,
+          description
+        ]
+      );
+      
+      console.log('[handleUpload] File inserted successfully, id:', result.insertId);
+      
       res.status(201).json({
         success: true,
         id: result.insertId
       });
     } catch (err) {
-      console.error('Upload failed:', err);
-      res.status(500).json({ error: 'Upload failed' });
+      console.error('[handleUpload] Error:', err);
+      res.status(500).json({ error: 'Upload failed: ' + err.message });
     }
   };
 };
