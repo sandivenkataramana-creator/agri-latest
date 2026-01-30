@@ -1,0 +1,455 @@
+/* ===============================
+   BASE
+================================ */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #F4F7F8;              /* govt light grey */
+  color: #1F2D33;
+}
+
+/* ===============================
+   FILTER TOOLBAR
+================================ */
+.filters-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #FFFFFF;
+  border: 1px solid #D6DEE2;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #355F6B;
+}
+
+.btn-filter:hover {
+  background: #E7F1F3;
+  border-color: #355F6B;
+}
+
+/* ===============================
+   FILTERS (GOVT STYLE)
+================================ */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+  background: #FFFFFF;
+  padding: 14px;
+  border-radius: 6px;
+  border: 1px solid #D6DEE2;
+}
+
+.filter-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  flex: 1 1 180px;
+}
+
+.filter-row label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #355F6B;                  /* teal label */
+}
+
+.filter-row select,
+.filter-row input {
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid #D6DEE2;
+  background: #FFFFFF;
+  font-size: 13px;
+  color: #1F2D33;
+}
+
+.filter-row select:focus,
+.filter-row input:focus {
+  outline: none;
+  border-color: #355F6B;
+  box-shadow: 0 0 0 2px rgba(53, 95, 107, 0.12);
+}
+
+/* ===============================
+   FILTER ACTIONS
+================================ */
+.filter-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.filter-actions .btn-search,
+.filter-actions .btn-clear {
+  padding: 8px 14px;
+  border-radius: 4px;
+  border: 1px solid #D6DEE2;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+/* Search */
+.filter-actions .btn-search {
+  background: #355F6B;
+  color: #FFFFFF;
+  border-color: #355F6B;
+}
+
+.filter-actions .btn-search:hover {
+  background: #27464F;
+}
+
+/* Clear */
+.filter-actions .btn-clear {
+  background: #FFFFFF;
+  color: #1F2D33;
+}
+
+.filter-actions .btn-clear:hover {
+  background: #F1F5F7;
+}
+/* ===============================
+   SUMMARY / STAT CARDS
+================================ */
+.summary-lists,
+.stat-cards {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.list-card,
+.stat-card {
+  background: #FFFFFF;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+  border-left: 4px solid #9CA3AF;
+  min-width: 200px;
+  flex: 1 1 220px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.list-card h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #355F6B;
+}
+
+.list-card li {
+  padding: 6px 0;
+  border-bottom: 1px dashed #E5E7EB;
+  font-size: 13px;
+  color: #1F2D33;
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card.clickable:hover {
+  background: #F9FAFB;
+}
+
+/* Stat card border colors */
+.stat-card.beneficiaries {
+  border-left: 4px solid #1E88E5 !important;
+}
+
+.stat-card.hods {
+  border-left: 4px solid #43A047 !important;
+}
+
+.stat-card.districts {
+  border-left: 4px solid #FB8C00 !important;
+}
+
+.stat-card.mandals {
+  border-left: 4px solid #8E24AA !important;
+}
+
+/* ===============================
+   TABLES (GOVT CRITICAL)
+================================ */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.responsive-table {
+  width: 100%;
+  min-width: 720px;                /* enables mobile scroll */
+  border-collapse: collapse;
+  margin-top: 14px;
+  background: #FFFFFF;
+  border: 1px solid #D6DEE2;
+}
+
+.responsive-table thead {
+  background: #F1F5F7;
+}
+
+.responsive-table th {
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #355F6B;                  /* teal header */
+  border-bottom: 2px solid #D6DEE2;
+}
+
+.responsive-table td {
+  padding: 9px 10px;
+  font-size: 13px;
+  color: #1F2D33;
+  border-bottom: 1px solid #E5E7EB;
+  white-space: nowrap;
+}
+
+.responsive-table tbody tr:nth-child(even) {
+  background: #FAFBFC;
+}
+
+.responsive-table tbody tr:hover {
+  background: #F1F5F7;
+}
+/* ===============================
+   TABLE HEADER ACTIONS
+================================ */
+.table-header .controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.table-header .btn-export,
+.table-header .btn-excel {
+  background: #355F6B;               /* teal primary */
+  color: #FFFFFF;
+  border: none;
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.table-header .btn-export:hover,
+.table-header .btn-excel:hover {
+  background: #27464F;
+}
+
+.table-header label.import-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #FFFFFF;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #D6DEE2;
+  font-weight: 600;
+  color: #355F6B;
+  cursor: pointer;
+}
+
+.table-header input[type="file"] {
+  display: none;
+}
+
+/* ===============================
+   PAGINATION
+================================ */
+.pagination {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.pagination button {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #D6DEE2;
+  background: #FFFFFF;
+  font-weight: 600;
+  font-size: 12px;
+  color: #1F2D33;
+  cursor: pointer;
+}
+
+.pagination button:hover:not(:disabled) {
+  background: #E7F1F3;
+  border-color: #355F6B;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===============================
+   DRAWER
+================================ */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1000;
+}
+
+.drawer {
+  background: #FFFFFF;
+  height: 100%;
+  width: 420px;
+  max-width: 100%;
+  border-left: 1px solid #D6DEE2;
+  overflow-y: auto;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.drawer-body {
+  padding: 14px;
+}
+
+.drawer-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #355F6B;
+}
+
+/* ===============================
+   MODAL
+================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  width: 92%;
+  max-width: 700px;
+  background: #FFFFFF;
+  border-radius: 6px;
+  border: 1px solid #D6DEE2;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.modal-header h3,
+.modal-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #355F6B;
+}
+
+.close-btn {
+  background: #FFFFFF;
+  border: 1px solid #D6DEE2;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #355F6B;
+}
+
+.close-btn:hover {
+  background: #E7F1F3;
+  border-color: #355F6B;
+}
+
+/* ===============================
+   RESPONSIVE – MOBILE
+================================ */
+@media (max-width: 900px) {
+  .responsive-table th:nth-child(11),
+  .responsive-table td:nth-child(11),
+  .responsive-table th:nth-child(12),
+  .responsive-table td:nth-child(12) {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+  }
+
+  .filter-row {
+    width: 100%;
+  }
+
+  .filter-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .drawer {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn-filter,
+  .filter-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pagination {
+    justify-content: center;
+  }
+}

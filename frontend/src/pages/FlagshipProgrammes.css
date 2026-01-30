@@ -1,0 +1,340 @@
+/* ===============================
+   FLAGSHIP PROGRAMMES PAGE
+================================ */
+
+.fp-title {
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: #355F6B;                /* teal heading */
+}
+
+.fp-content {
+  padding: 16px;
+  background: transparent;
+}
+
+/* ===============================
+   TABS
+================================ */
+.fp-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #D6DEE2;
+}
+
+.fp-tab {
+  padding: 10px 18px;
+  background: #F1F5F7;
+  color: #1F2D33;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px 6px 0 0;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.fp-tab:hover {
+  background: #E7F1F3;
+}
+
+.fp-tab.active {
+  background: #355F6B;
+  color: #FFFFFF;
+  border-bottom: 3px solid #355F6B;
+}
+
+/* ===============================
+   CONTROLS
+================================ */
+.fp-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.fp-select {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #D6DEE2;
+  font-size: 13px;
+  color: #1F2D33;
+  background: #FFFFFF;
+}
+
+.fp-admin-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ===============================
+   BUTTONS
+================================ */
+.fp-btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Export */
+.fp-export {
+  background: #7A8A90;           /* govt grey */
+  color: #FFFFFF;
+}
+
+.fp-export:hover {
+  background: #5E6E73;
+}
+
+/* Upload */
+.fp-upload {
+  background: #355F6B;           /* teal primary */
+  color: #FFFFFF;
+}
+
+.fp-upload:hover {
+  background: #27464F;
+}
+
+.fp-file-input {
+  display: none;
+}
+
+/* ===============================
+   UPLOAD CARD
+================================ */
+.fp-upload-card {
+  background: #FFFFFF;
+  padding: 16px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  border: 1px solid #D6DEE2;
+}
+
+.fp-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.fp-input {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #D6DEE2;
+  font-size: 13px;
+}
+
+.fp-upload-label {
+  padding: 8px 14px;
+  background: #355F6B;
+  color: #FFFFFF;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.fp-upload-label.disabled {
+  background: #B0BEC5;
+  cursor: not-allowed;
+}
+
+/* ===============================
+   EMPTY / LOADING
+================================ */
+.fp-loading,
+.fp-empty {
+  text-align: center;
+  padding: 40px;
+  color: #5E6E73;
+}
+
+/* ===============================
+   TABLE
+================================ */
+.fp-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #FFFFFF;
+  border: 1px solid #D6DEE2;
+}
+
+.fp-thead-row {
+  background: #F1F5F7;
+  border-bottom: 2px solid #D6DEE2;
+}
+
+.fp-th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 12px;
+  color: #355F6B;
+  text-transform: uppercase;
+}
+
+.fp-th-center {
+  text-align: center;
+}
+
+.fp-row {
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.fp-row:nth-child(even) {
+  background: #FAFBFC;
+}
+
+.fp-row:hover {
+  background: #F1F5F7;
+}
+
+.fp-td {
+  padding: 12px;
+  font-size: 13px;
+  color: #1F2D33;
+}
+
+.fp-td-strong {
+  font-weight: 600;
+}
+
+.fp-preview-cell {
+  font-size: 12px;
+  color: #5E6E73;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fp-td-center {
+  text-align: center;
+}
+
+.fp-td-small {
+  font-size: 12px;
+}
+
+/* ===============================
+   DELETE ACTION
+================================ */
+.fp-delete-btn {
+  padding: 6px 12px;
+  background: #FDECEA;
+  color: #C62828;
+  border: 1px solid #F5C2C7;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fp-delete-btn:hover {
+  background: #F8D7DA;
+}
+/* ===============================
+   PAGINATION
+================================ */
+.fp-pagination {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  align-items: center;
+}
+
+.fp-page-btn {
+  padding: 6px 12px;
+  background: #355F6B;              /* teal primary */
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.fp-page-btn:hover:not(.disabled) {
+  background: #27464F;
+}
+
+.fp-page-btn.disabled {
+  background: #B0BEC5;
+  cursor: not-allowed;
+}
+
+.fp-page-info {
+  padding: 6px 12px;
+  background: #F1F5F7;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1F2D33;
+}
+
+/* ===============================
+   HISTORY / STATUS
+================================ */
+.fp-history {
+  margin-top: 16px;
+}
+
+.fp-success-text {
+  color: #4B8B7D;                   /* muted govt green */
+  font-weight: 600;
+}
+
+.fp-error-text {
+  color: #C62828;                   /* govt red */
+  font-weight: 600;
+}
+
+.fp-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* Completed */
+.fp-status.completed {
+  background: #E6F4EA;
+  color: #166534;
+}
+
+/* Pending */
+.fp-status.pending {
+  background: #FFF4E5;
+  color: #9A3412;
+}
+
+/* ===============================
+   RESPONSIVE
+================================ */
+@media (max-width: 900px) {
+  .fp-upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fp-admin-actions {
+    margin-left: 0;
+  }
+}

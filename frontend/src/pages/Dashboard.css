@@ -1,0 +1,443 @@
+/* =========================
+   DASHBOARD PAGE STYLES
+========================= */
+
+/* Page Container */
+.page-container {
+  padding: 0;
+  background-color: #F4F7F8;          /* govt light grey */
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  color: #1F2D33;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* =========================
+   LOADING STATE
+========================= */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.spinner {
+  border: 4px solid #D6DEE2;
+  border-top: 4px solid #355F6B;      /* teal primary */
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================
+   STATS GRID
+========================= */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+/* =========================
+   STAT CARD
+========================= */
+.stat-card {
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+  border-left: 4px solid #355F6B;     /* teal accent */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  background-color: #F1F5F7;
+}
+
+/* =========================
+   STAT CARD COLOR VARIANTS
+   (Controlled, Official)
+========================= */
+.stat-card.green {
+  border-left-color: #4B8B7D;         /* muted govt green */
+}
+
+.stat-card.blue {
+  border-left-color: #355F6B;         /* teal */
+}
+
+.stat-card.orange {
+  border-left-color: #C28F2C;         /* muted amber */
+}
+
+.stat-card.teal {
+  border-left-color: #3F6F73;         /* deep teal */
+}
+
+/* =========================
+   STAT ICON
+========================= */
+.stat-icon {
+  font-size: 22px;
+  padding: 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background-color: #E7F1F3;
+  color: #355F6B;
+}
+
+/* =========================
+   STAT INFO
+========================= */
+.stat-info {
+  flex: 1;
+}
+
+.stat-info h3 {
+  margin: 0 0 3px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #355F6B;                 /* teal heading */
+}
+
+.stat-info p {
+  margin: 0 0 4px;
+  font-size: 11px;
+  color: #5E6E73;                 /* govt muted grey */
+}
+
+/* =========================
+   TREND
+========================= */
+.trend {
+  font-size: 11px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trend.up {
+  color: #4B8B7D;                 /* muted govt green */
+}
+
+/* =========================
+   CHARTS GRID
+========================= */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================
+   CHART CARD
+========================= */
+.chart-card {
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #D6DEE2;
+}
+
+.chart-card-body {
+  position: relative;
+  overflow-x: auto;
+}
+
+/* Custom scrollbar for chart containers */
+.chart-card-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.chart-card-body::-webkit-scrollbar-track {
+  background: #F1F5F7;
+  border-radius: 3px;
+}
+
+.chart-card-body::-webkit-scrollbar-thumb {
+  background: #9FB3B9;
+  border-radius: 3px;
+}
+
+.chart-card-body::-webkit-scrollbar-thumb:hover {
+  background: #7A8A90;
+}
+
+.chart-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.chart-card-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #355F6B;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.chart-card-header h3 span {
+  font-size: 12px;
+  color: #5E6E73;
+  font-weight: normal;
+}
+
+/* =========================
+   CHART CONTAINER
+========================= */
+.chart-container {
+  height: 180px;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-container.large {
+  height: 220px;
+}
+/* =========================
+   CHART FILTER DROPDOWN
+========================= */
+.chart-filter-dropdown {
+  background-color: #FFFFFF;
+  border: 1px solid #D6DEE2;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  min-width: 200px;
+}
+
+.dropdown-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid #E5E7EB;
+  font-weight: 700;
+  font-size: 13px;
+  color: #355F6B;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #1F2D33;
+}
+
+.dropdown-item:hover {
+  background-color: #F1F5F7;
+}
+
+.dropdown-item.selected {
+  background-color: #E7F1F3;
+  color: #355F6B;
+  font-weight: 600;
+}
+
+/* =========================
+   LEGEND & STATUS COLORS
+========================= */
+.legend-item,
+.scheme-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #1F2D33;
+}
+
+.legend-color,
+.scheme-legend-item-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Muted, govt-safe chart colors */
+.status-completed {
+  background-color: rgba(53, 95, 107, 0.85);   /* teal */
+}
+
+.status-planned {
+  background-color: rgba(194, 143, 44, 0.85); /* muted amber */
+}
+
+.status-active {
+  background-color: rgba(75, 139, 125, 0.85); /* govt green */
+}
+
+.status-default {
+  background-color: rgba(150, 150, 150, 0.8);
+}
+
+/* =========================
+   FILTER ICON
+========================= */
+.filter-icon {
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.filter-icon.active {
+  color: #355F6B;
+}
+
+.filter-icon.inactive {
+  color: #7A8A90;
+}
+
+/* =========================
+   BUDGET BY HOD CHART STYLES
+========================= */
+.budget-hod-container {
+  background: #FFFFFF;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #D6DEE2;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  grid-column: 1 / -1;
+  margin-bottom: 14px;
+}
+
+.budget-hod-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.budget-hod-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #355F6B;
+  flex-grow: 1;
+}
+
+.chart-filter-button {
+  padding: 8px 14px;
+  background: #355F6B;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s ease;
+  white-space: nowrap;
+}
+
+.chart-filter-button:hover {
+  background: #27464F;
+}
+
+.chart-filter-button:active {
+  transform: translateY(0);
+}
+
+.budget-chart-wrapper {
+  height: auto;
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 16px;
+}
+
+.chart-box.large {
+  height: 400px;
+  min-height: 400px;
+  position: relative;
+}
+
+/* Scrollbar styling for budget chart */
+.budget-chart-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.budget-chart-wrapper::-webkit-scrollbar-track {
+  background: #F1F5F7;
+  border-radius: 10px;
+}
+
+.budget-chart-wrapper::-webkit-scrollbar-thumb {
+  background: #9FB3B9;
+  border-radius: 10px;
+}
+
+.budget-chart-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #7A8A90;
+}
+
+/* =========================
+   RESPONSIVE – MOBILE FIRST
+========================= */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 14px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-info h3 {
+    font-size: 20px;
+  }
+
+  .chart-container,
+  .chart-container.large {
+    height: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-icon {
+    font-size: 22px;
+    padding: 8px;
+  }
+
+  .chart-card {
+    padding: 14px;
+  }
+}

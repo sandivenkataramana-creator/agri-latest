@@ -1,0 +1,285 @@
+/* ================================
+   GOVERNMENT STYLE KPI DASHBOARD
+   ================================ */
+
+/* Color Variables */
+:root {
+  --gov-blue: #0b3c5d;
+  --gov-blue-light: #1f6aa5;
+  --gov-bg: #f2f4f7;
+  --gov-border: #d1d5db;
+  --gov-text: #1f2937;
+  --gov-muted: #6b7280;
+
+  --success: #2e7d32;
+  --warning: #ed6c02;
+  --danger: #c62828;
+}
+
+/* Page */
+.page-container {
+  padding: 20px;
+  background-color: var(--gov-bg);
+  min-height: 100vh;
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* ================================
+   STATS GRID
+   ================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: #ffffff;
+  border: 1px solid var(--gov-border);
+  border-radius: 6px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.stat-icon.blue { background-color: var(--gov-blue); }
+.stat-icon.green { background-color: var(--success); }
+.stat-icon.orange { background-color: var(--warning); }
+.stat-icon.purple { background-color: var(--gov-blue-light); }
+
+.stat-info h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--gov-text);
+}
+
+.stat-info p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gov-muted);
+}
+
+/* ================================
+   KPI CARDS
+   ================================ */
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.widget-card {
+  background: #ffffff;
+  border: 1px solid var(--gov-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Header */
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  color: #ffffff;
+}
+
+.header-on_track { background-color: var(--success); }
+.header-at_risk { background-color: var(--warning); }
+.header-behind { background-color: var(--danger); }
+.header-completed { background-color: var(--gov-blue); }
+
+.widget-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.widget-header .count {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Body */
+.widget-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.widget-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.widget-item-label {
+  font-weight: 600;
+  color: var(--gov-text);
+}
+
+.widget-item-value {
+  color: var(--gov-muted);
+}
+
+/* ================================
+   PROGRESS BAR
+   ================================ */
+.progress-bar {
+  background: #e5e7eb;
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.progress-meter {
+  width: 100%;
+  height: 8px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+}
+
+.progress-meter::-webkit-progress-bar {
+  background: #e5e7eb;
+}
+
+.progress-meter::-webkit-progress-value {
+  border-radius: 4px;
+}
+
+.progress-meter.green::-webkit-progress-value { background-color: var(--success); }
+.progress-meter.orange::-webkit-progress-value { background-color: var(--warning); }
+.progress-meter.blue::-webkit-progress-value { background-color: var(--gov-blue); }
+
+.progress-meter::-moz-progress-bar {
+  border-radius: 4px;
+}
+
+.progress-meter.green::-moz-progress-bar { background-color: var(--success); }
+.progress-meter.orange::-moz-progress-bar { background-color: var(--warning); }
+.progress-meter.blue::-moz-progress-bar { background-color: var(--gov-blue); }
+
+/* ================================
+   ACTION BUTTONS
+   ================================ */
+.card-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.action-btn.edit {
+  background-color: var(--gov-blue-light);
+}
+
+.action-btn.delete {
+  background-color: var(--danger);
+}
+
+/* ================================
+   ADD KPI BUTTON
+   ================================ */
+.add-kpi {
+  margin-top: 24px;
+  text-align: center;
+}
+
+/* ================================
+   FORM STYLES
+   ================================ */
+.form-group {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gov-text);
+}
+
+.form-group input,
+.form-group select {
+  padding: 9px 10px;
+  border: 1px solid var(--gov-border);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--gov-blue);
+}
+
+/* ================================
+   BUTTONS
+   ================================ */
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background-color: var(--gov-blue);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: #6b7280;
+  color: #ffffff;
+}
+
+/* ================================
+   RESPONSIVE
+   ================================ */
+@media (max-width: 640px) {
+  .page-container {
+    padding: 12px;
+  }
+
+  .widget-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-actions {
+    flex-direction: column;
+  }
+
+  .action-btn,
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

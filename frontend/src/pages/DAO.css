@@ -1,0 +1,462 @@
+/* ===============================
+   DAO PAGE STYLES
+================================ */
+
+/* Page Container */
+.dao-container {
+  padding: 20px;
+  background-color: #F4F7F8;        /* govt light grey */
+  min-height: 100vh;
+  color: #1F2D33;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* Header Section */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #355F6B;                   /* teal heading */
+}
+
+/* ===============================
+   ACTION BAR
+================================ */
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: #FFFFFF;
+  border: 1px solid #D6DEE2;
+  border-radius: 6px;
+  padding: 8px 12px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
+}
+
+.search-icon {
+  color: #7A8A90;
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0;
+  font-size: 14px;
+  background: transparent;
+  color: #1F2D33;
+}
+
+.search-input::placeholder {
+  color: #9AA6AC;
+}
+
+/* ===============================
+   BUTTON STYLES
+================================ */
+.btn {
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #D6DEE2;
+  background: #FFFFFF;
+  color: #1F2D33;
+}
+
+.btn-primary {
+  background-color: #355F6B;       /* teal primary */
+  color: #FFFFFF;
+  border-color: #355F6B;
+}
+
+.btn-primary:hover {
+  background-color: #27464F;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===============================
+   TABLE STYLES
+================================ */
+.table-card {
+  background-color: #FFFFFF;
+  border-radius: 6px;
+  border: 1px solid #D6DEE2;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.dao-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dao-table thead {
+  background-color: #F4F7F8;
+  border-bottom: 2px solid #D6DEE2;
+}
+
+.dao-table th {
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 700;
+  color: #355F6B;                  /* teal header text */
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.dao-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #E5E7EB;
+  font-size: 13px;
+  color: #1F2D33;
+}
+
+.dao-table tbody tr:hover {
+  background-color: #F8FAFB;
+}
+
+.dao-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ===============================
+   STATUS BADGES
+================================ */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.active {
+  background-color: #E6F4EA;
+  color: #166534;
+}
+
+.status-badge.inactive {
+  background-color: #FDECEA;
+  color: #C62828;
+}
+/* ===============================
+   ACTION CELL
+================================ */
+.action-cell {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: 1px solid #D6DEE2;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #FFFFFF;
+}
+
+/* Edit */
+.edit-btn {
+  color: #355F6B;
+}
+
+.edit-btn:hover {
+  background: #E7F1F3;
+  border-color: #355F6B;
+}
+
+/* Delete */
+.delete-btn {
+  color: #C62828;
+}
+
+.delete-btn:hover {
+  background: #FDECEA;
+  border-color: #C62828;
+}
+
+/* ===============================
+   EMPTY STATE
+================================ */
+.empty-cell {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7A8A90;
+}
+
+.empty-cell p {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* ===============================
+   MODAL STYLES
+================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #FFFFFF;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid #D6DEE2;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal-title {
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #355F6B;
+}
+
+/* ===============================
+   FORM STYLES
+================================ */
+.dao-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: #355F6B;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #D6DEE2;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-family: inherit;
+  background: #FFFFFF;
+  color: #1F2D33;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #355F6B;
+  box-shadow: 0 0 0 2px rgba(53, 95, 107, 0.12);
+}
+
+.form-input::placeholder {
+  color: #9AA6AC;
+}
+
+/* ===============================
+   MODAL BUTTONS
+================================ */
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+
+.btn-save {
+  flex: 1;
+  padding: 10px;
+  background-color: #355F6B;       /* teal primary */
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background-color 0.2s ease;
+}
+
+.btn-save:hover {
+  background-color: #27464F;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 10px;
+  background-color: #7A8A90;       /* neutral govt grey */
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background-color 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background-color: #5E6E73;
+}
+
+/* ===============================
+   PAGINATION
+================================ */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #F1F5F7;
+  border-top: 1px solid #D6DEE2;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: #5E6E73;
+}
+
+.pagination-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.pagination-btn {
+  padding: 6px 10px;
+  background-color: #FFFFFF;
+  border: 1px solid #D6DEE2;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1F2D33;
+  transition: background 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: #E7F1F3;
+  border-color: #355F6B;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===============================
+   RESPONSIVE DESIGN
+================================ */
+@media (max-width: 768px) {
+  .dao-container {
+    padding: 12px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .action-bar {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .search-wrapper {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .modal-content {
+    max-width: 100%;
+  }
+
+  .dao-table th,
+  .dao-table td {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .pagination-bar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    padding: 20px;
+  }
+
+  .modal-buttons {
+    flex-direction: column;
+  }
+
+  .btn-save,
+  .btn-cancel {
+    flex: 1;
+  }
+
+  .action-cell {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
