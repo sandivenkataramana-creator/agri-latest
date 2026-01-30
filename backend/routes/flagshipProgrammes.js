@@ -301,18 +301,28 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Delete programme (must be last of the /:id routes)
+// Soft delete programme (must be last of the /:id routes)
 router.delete('/:id', superAdminOnly, async (req, res) => {
   try {
-    const result = await db.query(
-      'DELETE FROM flagship_programmes WHERE id = ?',
-      [req.params.id]
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ message: 'Delete reason is required' });
+    }
+
+    const [result] = await db.query(
+      `UPDATE flagship_programmes
+       SET status = 'deleted',
+           delete_reason = ?,
+           deleted_at = NOW()
+       WHERE id = ?`,
+      [reason, req.params.id]
     );
-    
-    if (result[0].affectedRows === 0) {
+
+    if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Programme not found' });
     }
-    
+
     res.json({ message: 'Programme deleted successfully' });
   } catch (error) {
     console.error('Error deleting programme:', error);

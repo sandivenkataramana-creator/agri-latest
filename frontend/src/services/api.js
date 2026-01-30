@@ -164,7 +164,7 @@ export const deleteStaff = (id) => api.delete(`/staff/${id}`);
 export const createStaffAccount = (staffId) => api.post(`/staff/${staffId}/create-account`, {});
 
 // Budget
-export const getBudget = () => api.get('/budget');
+export const getBudget = (params = {}) => api.get('/budget', { params });
 export const getBudgetById = (id) => api.get(`/budget/${id}`);
 export const getBudgetByHODId = (hodId) => api.get(`/budget/hod/${hodId}`);
 export const getBudgetSummary = () => api.get('/budget/summary/overview');
@@ -216,7 +216,8 @@ export const getFlagshipProgrammesByDepartment = (departmentId) =>
 export const uploadFlagshipData = (data) => api.post('/flagship-programmes/upload', data);
 export const getImportHistory = () => api.get('/flagship-programmes/import-history');
 export const getImportBatchDetails = (batchId) => api.get(`/flagship-programmes/batch/${batchId}`);
-export const deleteFlagshipProgramme = (id) => api.delete(`/flagship-programmes/${id}`);
+// For HODs: soft-delete flagship programme file with reason
+export const deleteFlagshipProgramme = (id, data) => api.delete(`/uploads/flagship-program/${id}`, { data });
 export const exportFlagshipProgrammesCSV = (department = '') => 
   api.get(`/flagship-programmes/export/csv${department ? `?department=${department}` : ''}`);
 

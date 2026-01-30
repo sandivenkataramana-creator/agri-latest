@@ -12,7 +12,11 @@ const Beneficiaries = () => {
   const [hods, setHods] = useState([]);
   const [schemes, setSchemes] = useState([]);
 
-  const [filters, setFilters] = useState({ hodId: null, districtId: null, mandalId: null, villageId: null, villageName: '', schemeId: null, page: 0, size: 10 });
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isHOD = user.role === 'hod';
+  const hodId = user.hod_id;
+
+  const [filters, setFilters] = useState({ hodId: isHOD ? hodId : null, districtId: null, mandalId: null, villageId: null, villageName: '', schemeId: null, page: 0, size: 10 });
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
@@ -38,9 +42,9 @@ const Beneficiaries = () => {
   // if user navigated with ?hodId=... pre-fill it (no auto-show filters)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const hodId = params.get('hodId');
-    if (hodId) setFilters(f => ({ ...f, hodId: Number(hodId) }));
-  }, []);
+    const paramHodId = params.get('hodId');
+    if (paramHodId && !isHOD) setFilters(f => ({ ...f, hodId: Number(paramHodId) }));
+  }, [isHOD]);
 
   useEffect(() => {
     // Load initial data
@@ -393,7 +397,15 @@ const Beneficiaries = () => {
             <label style={{ fontSize: '11px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
               👤 HOD
             </label>
-            <select value={filters.hodId || ''} onChange={(e) => setFilters(f => ({ ...f, hodId: e.target.value ? Number(e.target.value) : null }))} style={{
+            <select value={filters.hodId || ''} onChange={(e) => setFilters(f => ({ ...f, hodId: e.target.value ? Number(e.target.value) : null }))} disabled={isHOD} style={{
+              padding: '9px',
+              borderRadius: '8px',
+              border: 'none',
+              background: isHOD ? '#e0e0e0' : 'white',
+              fontSize: '13px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              cursor: isHOD ? 'not-allowed' : 'pointer',
+              opacity: isHOD ? 0.6 : 1,
               padding: '9px',
               borderRadius: '8px',
               border: 'none',

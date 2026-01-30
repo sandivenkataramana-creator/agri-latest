@@ -84,9 +84,9 @@ async function searchBeneficiaries(filters) {
 }
 
 async function exportBeneficiaries(filters, res, format = 'csv') {
-  if (!filters.districtId || !filters.mandalId) {
-    throw new Error('District and Mandal are required');
-  }
+  // if (!filters.districtId || !filters.mandalId) {
+  //   throw new Error('District and Mandal are required');
+  // }
 
   const MAX_EXPORT_ROWS = Number(process.env.MAX_EXPORT_ROWS) || 50000;
   const chunkSize = 5000; // fetch per chunk

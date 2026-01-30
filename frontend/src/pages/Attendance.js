@@ -41,6 +41,22 @@ ChartJS.register(
 const Attendance = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
+  // Get user from localStorage
+  const [user, setUser] = useState(null);
+  const [isHOD, setIsHOD] = useState(false);
+  const [userHodId, setUserHodId] = useState(null);
+  
+  // Initialize user data on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      setIsHOD(userData.role === 'hod');
+      setUserHodId(userData.hod_id || null);
+    }
+  }, []);
+  
   // Track if HOD filter has been initialized
   const hodFilterInitialized = useRef(false);
   
@@ -68,7 +84,7 @@ const Attendance = () => {
   const [filters, setFilters] = useState({
     period: searchParams.get('period') || 'today',
     status: searchParams.get('status') || 'all',
-    hod_id: searchParams.get('hod_id') || '',
+    hod_id: isHOD ? userHodId : (searchParams.get('hod_id') || ''),
     department: searchParams.get('department') || '',
     employee_type: searchParams.get('employee_type') || 'all',
     start_date: searchParams.get('start_date') || '',
@@ -80,15 +96,14 @@ const Attendance = () => {
   
   const [formData, setFormData] = useState({
     staff_id: '',
-    hod_id: '',
+    hod_id: isHOD ? userHodId : '',
     date: new Date().toISOString().split('T')[0],
     status: 'present',
     check_in: '',
     check_out: '',
     remarks: ''
   });
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isSuperAdmin = user.role === 'superadmin';
+  const isSuperAdmin = user?.role === 'superadmin';
   const isReadOnly = !isSuperAdmin;
   
   console.log('User from localStorage:', user);
@@ -112,7 +127,7 @@ const Attendance = () => {
       const params = { ...filters };
 
       // For HOD users, send hod_id instead of department filter (backend scopes by hod_id)
-      if (user.role === 'hod' && user.hod_id) {
+      if (user?.role === 'hod' && user?.hod_id) {
         params.hod_id = user.hod_id;
         delete params.department; // Remove department from params, backend will scope by hod_id
       }
@@ -147,7 +162,7 @@ const Attendance = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, user.role, user.hod_id]);
+  }, [filters, user?.role, user?.hod_id]);
 
   // Fetch initial data
   useEffect(() => {
@@ -161,8 +176,8 @@ console.log('HOD list:', hodList);
 console.log('Filters:', filters);
 
   if (
-    user.role === 'hod' &&
-    user.hod_id &&
+    user?.role === 'hod' &&
+    user?.hod_id &&
     hodList.length > 0 &&
     !filters.department
   ) {
@@ -177,7 +192,7 @@ console.log('Filters:', filters);
       }));
     }
   }
-}, [user.role, user.hod_id, hodList, filters.department]);
+}, [user?.role, user?.hod_id, hodList, filters.department]);
 
 
   // Fetch attendance when filters change
@@ -294,12 +309,12 @@ console.log('Filters:', filters);
   const uniqueDepartments = useMemo(() => {
     const departments = new Set();
     
-    console.log('Building uniqueDepartments - user.role:', user.role, 'user.hod_id:', user.hod_id, 'user.department:', user.department, 'hodList.length:', hodList.length);
+    console.log('Building uniqueDepartments - user.role:', user?.role, 'user.hod_id:', user?.hod_id, 'user.department:', user?.department, 'hodList.length:', hodList.length);
     
-    if (user.role === 'hod') {
+    if (user?.role === 'hod') {
       // For HOD, try to find by hod_id first, then by department name
-      if (user.hod_id) {
-        const hodData = hodList.find(h => h.id === user.hod_id);
+      if (user?.hod_id) {
+        const hodData = hodList.find(h => h.id === user?.hod_id);
         if (hodData && hodData.department) {
           departments.add(hodData.department);
           console.log('Found HOD by ID, department:', hodData.department);
@@ -307,7 +322,7 @@ console.log('Filters:', filters);
       }
       
       // If not found by ID, try by department name
-      if (departments.size === 0 && user.department) {
+      if (departments.size === 0 && user?.department) {
         departments.add(user.department);
         console.log('Using user department directly:', user.department);
       }
@@ -324,7 +339,7 @@ console.log('Filters:', filters);
     const result = Array.from(departments).sort();
     console.log('Final uniqueDepartments:', result);
     return result;
-  }, [hodList, user.role, user.hod_id, user.department]);
+  }, [hodList, user?.role, user?.hod_id, user?.department]);
 
   // Chart options
   const barChartOptions = {
@@ -730,10 +745,10 @@ console.log('Filters:', filters);
             value={filters.department} 
             onChange={(e) => handleFilterChange('department', e.target.value)}
             className="filter-select-modern"
-            disabled={user.role === 'hod'}
-            title={user.role === 'hod' ? 'HOD can only view their own department' : ''}
+            disabled={user?.role === 'hod'}
+            title={user?.role === 'hod' ? 'HOD can only view their own department' : ''}
           >
-            {user.role === 'superadmin' && <option value="">All Departments</option>}
+            {user?.role === 'superadmin' && <option value="">All Departments</option>}
             {uniqueDepartments.map(dept => (
               <option key={dept} value={dept}>
                 {dept}

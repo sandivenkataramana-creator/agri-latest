@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header';
-import { FiDownload, FiUpload, FiRefreshCw, FiTrash2, FiFileText } from 'react-icons/fi';
+import { FiDownload, FiUpload, FiRefreshCw, FiTrash2, FiFileText, FiList, FiGrid, FiEye } from 'react-icons/fi';
 import {
-  getFlagshipProgrammes,
-  getFlagshipProgrammesByDepartment,
   uploadFlagshipData,
   getImportHistory,
   deleteFlagshipProgramme,
   exportFlagshipProgrammesCSV
 } from '../services/api';
 import * as XLSX from 'xlsx';
+import api from '../services/api';
 
 const FlagshipProgrammes = () => {
-  const [programmes, setProgrammes] = useState([]);
-  const [reports, setReports] = useState([]);
+  const fileInputRef = useRef(null);
+  const [flagshipUploads, setFlagshipUploads] = useState([]);
+  const [viewFormat, setViewFormat] = useState('cards'); // 'cards' or 'list'
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('programmes'); // 'programmes' or 'reports'
   const [importHistory, setImportHistory] = useState([]);
@@ -23,34 +23,39 @@ const FlagshipProgrammes = () => {
   const [departmentInput, setDepartmentInput] = useState('');
   const [uploading, setUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [selectedExportFormat, setSelectedExportFormat] = useState('csv');
+  const [exporting, setExporting] = useState(false);
+  const [showExportOptions, setShowExportOptions] = useState(false);
   const pageSize = 10;
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isSuperAdmin = user.role === 'superadmin';
+  const isHOD = user.role === 'hod';
+  const userHodId = user.hod_id;
 
   // Fetch programmes on mount and when filters change
   useEffect(() => {
-    fetchProgrammes();
+    fetchFlagshipUploads();
   }, [selectedDepartment]);
 
-  const fetchProgrammes = async () => {
+  const fetchFlagshipUploads = async () => {
     try {
       setLoading(true);
-      const params = selectedDepartment ? { department: selectedDepartment } : {};
-      const response = await getFlagshipProgrammes(params);
-      
-      // Separate programmes and reports
-      const progs = response.data.filter(item => !item.report_date) || [];
-      const reps = response.data.filter(item => item.report_date) || [];
-      
-      setProgrammes(progs);
-      setReports(reps);
-      
-      if (isSuperAdmin) {
-        fetchImportHistory();
+      // Use uploads API for all flagship uploads
+      const token = JSON.parse(localStorage.getItem('user') || '{}').token;
+      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/flagship-programs`;
+      if (!isHOD && selectedDepartment) {
+        url += `?department=${encodeURIComponent(selectedDepartment)}`;
       }
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setFlagshipUploads(Array.isArray(data) ? data : []);
+      if (isSuperAdmin) fetchImportHistory();
     } catch (error) {
-      console.error('Error fetching programmes:', error);
+      console.error('Error fetching flagship uploads:', error);
     } finally {
       setLoading(false);
     }
@@ -65,14 +70,55 @@ const FlagshipProgrammes = () => {
     }
   };
 
-  const handleFileUpload = async (event) => {
-    try {
-      const file = event.target.files[0];
-      if (!file) return;
+  const handleFileSelect = (e) => {
+    if (e.target.files.length > 0) {
+      setUploadedFile(e.target.files[0]);
+    }
+  };
 
+  const handleFileUpload = async () => {
+    if (!uploadedFile) return;
+
+    try {
       setUploading(true);
-      
-      // Parse Excel file
+
+      // If HOD: send raw file to uploads endpoint (accept any file type)
+      if (isHOD) {
+        try {
+          const formData = new FormData();
+          formData.append('file', uploadedFile);
+          formData.append('fileFormat', (uploadedFile.name.split('.').pop() || '').toLowerCase());
+          // mark this upload as a flagship_program when uploading from this page
+          formData.append('upload_type', 'flagship_program');
+
+          // Use axios instance with correct baseURL and auth interceptor
+          const res = await api.post('/uploads/flagship-program', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+
+          if (res && res.data) {
+            alert(res.data.message || 'File uploaded successfully');
+          } else {
+            alert('File uploaded (no response body)');
+          }
+
+          setUploadedFile(null);
+          setDepartmentInput('');
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          fetchFlagshipUploads();
+        } catch (err) {
+          console.error('HOD upload error:', err);
+          const msg = err.response && err.response.data && err.response.data.error
+            ? err.response.data.error
+            : err.message || 'Upload failed';
+          alert('Error uploading file: ' + msg);
+        } finally {
+          setUploading(false);
+        }
+        return;
+      }
+
+      // Superadmin path: parse Excel/CSV and import via existing endpoint
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
@@ -82,24 +128,24 @@ const FlagshipProgrammes = () => {
           const data = XLSX.utils.sheet_to_json(worksheet);
 
           if (data.length === 0) {
-            alert('No data found in the Excel file');
+            alert('No data found in the file');
             setUploading(false);
             return;
           }
 
-          // Upload data
           const response = await uploadFlagshipData({
             file_data: data,
-            file_name: file.name,
+            file_name: uploadedFile.name,
             import_type: importType,
             department_name: departmentInput || 'General'
           });
 
           if (response.data.success) {
             alert(`Successfully imported ${response.data.successful} records`);
-            setFileData(null);
+            setUploadedFile(null);
             setDepartmentInput('');
-            fetchProgrammes();
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            fetchFlagshipUploads();
           }
         } catch (error) {
           console.error('Error processing file:', error);
@@ -108,8 +154,8 @@ const FlagshipProgrammes = () => {
           setUploading(false);
         }
       };
-      
-      reader.readAsArrayBuffer(file);
+
+      reader.readAsArrayBuffer(uploadedFile);
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('Error uploading file');
@@ -117,369 +163,376 @@ const FlagshipProgrammes = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this item?')) {
-      try {
-        await deleteFlagshipProgramme(id);
-        fetchProgrammes();
-      } catch (error) {
-        alert('Error deleting item: ' + error.message);
-      }
+  const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [selectedToDelete, setSelectedToDelete] = useState(null);
+
+  const handleDelete = (item) => {
+    setSelectedToDelete(item);
+    setShowDeleteReasonModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteReason.trim()) {
+      alert('Please provide a reason for deletion');
+      return;
+    }
+    try {
+      await deleteFlagshipProgramme(selectedToDelete.id, { reason: deleteReason });
+      setShowDeleteReasonModal(false);
+      setDeleteReason('');
+      setSelectedToDelete(null);
+      fetchFlagshipUploads();
+    } catch (error) {
+      alert('Error deleting item: ' + (error.message || 'Unknown error'));
     }
   };
 
   const handleExport = async () => {
     try {
+      setExporting(true);
       const response = await exportFlagshipProgrammesCSV(selectedDepartment);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      
+      let content = response.data;
+      let filename = `flagship_${importType}s_${Date.now()}`;
+      let contentType = 'text/csv';
+
+      if (selectedExportFormat === 'xlsx') {
+        // Convert CSV to XLSX
+        const lines = content.split('\n');
+        const data = lines.map(line => line.split(','));
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Data');
+        XLSX.writeFile(wb, `${filename}.xlsx`);
+        setExporting(false);
+        return;
+      } else if (selectedExportFormat === 'docx') {
+        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        filename += '.docx';
+      } else {
+        filename += '.csv';
+      }
+
+      const url = window.URL.createObjectURL(new Blob([content]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `flagship_${importType}s_${Date.now()}.csv`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
       alert('Error exporting data');
+    } finally {
+      setExporting(false);
     }
   };
 
-  const displayData = activeTab === 'programmes' ? programmes : reports;
+  // Only show active files
+  const displayData = flagshipUploads.filter(f => f.status !== 'deleted');
   const paginatedData = displayData.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   const totalPages = Math.ceil(displayData.length / pageSize);
 
+
   return (
-    <div className="page-container">
-      <Header />
-      <h4 style={{ marginBottom: '20px' }}>Department-wise Flagship Programmes & Reports</h4>
-      <div style={{ padding: '20px' }}>
-        
-
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee' }}>
-          <button
-            onClick={() => { setActiveTab('programmes'); setCurrentPage(0); }}
-            style={{
-              padding: '12px 20px',
-              background: activeTab === 'programmes' ? '#667eea' : '#f5f5f5',
-              color: activeTab === 'programmes' ? '#fff' : '#333',
-              border: 'none',
-              borderBottom: activeTab === 'programmes' ? '3px solid #667eea' : 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600'
-            }}
-          >
-            <FiFileText style={{ marginRight: '5px' }} /> Flagship Programmes ({programmes.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('reports'); setCurrentPage(0); }}
-            style={{
-              padding: '12px 20px',
-              background: activeTab === 'reports' ? '#667eea' : '#f5f5f5',
-              color: activeTab === 'reports' ? '#fff' : '#333',
-              border: 'none',
-              borderBottom: activeTab === 'reports' ? '3px solid #667eea' : 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600'
-            }}
-          >
-            <FiFileText style={{ marginRight: '5px' }} /> Reports ({reports.length})
-          </button>
-        </div>
-
-        {/* Controls */}
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
-          <select
-            value={selectedDepartment}
-            onChange={(e) => { setSelectedDepartment(e.target.value); setCurrentPage(0); }}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '5px',
-              border: '1px solid #ddd',
-              fontSize: '14px'
-            }}
-          >
-            <option value="">All Departments</option>
-            <option value="Agriculture">Agriculture</option>
-            <option value="Horticulture">Horticulture</option>
-            <option value="Animal Husbandry">Animal Husbandry</option>
-            <option value="Fisheries">Fisheries</option>
-          </select>
-
-          {isSuperAdmin && (
-            <>
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={handleExport}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#4CAF50',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '5px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
-                  <FiDownload /> Export CSV
-                </button>
-                <label style={{
-                  padding: '8px 16px',
-                  background: '#667eea',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}>
-                  <FiUpload /> Upload Excel
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                    disabled={uploading}
-                  />
-                </label>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Upload Form */}
-        {isSuperAdmin && (
-          <div style={{
-            background: '#f9f9f9',
-            padding: '15px',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            border: '1px solid #eee'
-          }}>
-            <h3>Upload New Data</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
-              <select
-                value={importType}
-                onChange={(e) => setImportType(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '5px',
-                  border: '1px solid #ddd'
-                }}
-              >
-                <option value="programme">Flagship Programme</option>
-                <option value="report">Report</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Department Name (optional)"
-                value={departmentInput}
-                onChange={(e) => setDepartmentInput(e.target.value)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '5px',
-                  border: '1px solid #ddd'
-                }}
-              />
-              <label style={{
-                padding: '8px 16px',
-                background: uploading ? '#ccc' : '#667eea',
-                color: '#fff',
+    <>
+      {/* Controls and View Toggle */}
+      <div className="reports-header">
+        <h2>Flagship Programmes</h2>
+        <div className="reports-actions">
+          <div>
+            <button onClick={() => setViewFormat(viewFormat === 'cards' ? 'list' : 'cards')}
+              style={{
+                padding: '8px 12px',
+                background: '#1976d2',
+                color: 'white',
                 border: 'none',
-                borderRadius: '5px',
-                cursor: uploading ? 'not-allowed' : 'pointer',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                marginRight: '10px'
+              }}
+            >
+              {viewFormat === 'cards' ? <FiList /> : <FiGrid />}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                padding: '8px 16px',
+                background: '#2e7d32',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                {uploading ? 'Uploading...' : 'Select Excel File'}
-                <input
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
-                  disabled={uploading}
-                />
-              </label>
-            </div>
+                gap: '6px'
+              }}
+            >
+              <FiUpload /> Choose File
+            </button>
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Data Table */}
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <div className="spinner"></div>
-          </div>
-        ) : paginatedData.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            No {activeTab} found
-          </div>
-        ) : (
-          <div className="table-wrapper">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      {uploadedFile && (
+        <div style={{
+          padding: '12px',
+          background: '#e8f5e9',
+          borderRadius: '6px',
+          marginBottom: '16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span>{uploadedFile.name}</span>
+          <button
+            onClick={handleFileUpload}
+            style={{
+              padding: '6px 12px',
+              background: '#2e7d32',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Upload
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <p>Loading flagship programmes...</p>
+      ) : displayData.length === 0 ? (
+        <p style={{ textAlign: 'center', color: '#666', marginTop: '32px' }}>No flagship programmes uploaded yet</p>
+      ) : (
+        <>
+          {viewFormat === 'cards' ? (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+              gap: '16px'
+            }}>
+              {displayData.map(item => (
+                <div key={item.id} style={{
+                  padding: '16px',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '8px',
+                  background: '#fafafa'
+                }}>
+                  <h4>{item.file_name}</h4>
+                  <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                    Format: <strong>{item.file_format?.toUpperCase()}</strong>
+                  </p>
+                  <p style={{ fontSize: '12px', color: '#666' }}>
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                    <button
+                      onClick={async () => {
+                        const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${item.id}`;
+                        const response = await fetch(url, {
+                          headers: { 'Authorization': `Bearer ${user.token}` }
+                        });
+                        if (!response.ok) {
+                          alert('Failed to download file');
+                          return;
+                        }
+                        const blob = await response.blob();
+                        const a = document.createElement('a');
+                        a.href = window.URL.createObjectURL(blob);
+                        a.download = item.file_name;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(a.href);
+                        document.body.removeChild(a);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#388e3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <FiDownload /> Download
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item)}
+                      style={{
+                        padding: '6px 12px',
+                        background: '#d32f2f',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              marginTop: '16px'
+            }}>
               <thead>
                 <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Department</th>
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>
-                    {activeTab === 'programmes' ? 'Programme Name' : 'Report Name'}
-                  </th>
-                  {activeTab === 'reports' && (
-                    <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Date</th>
-                  )}
-                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Data Preview</th>
-                  <th style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>Actions</th>
+                  <th style={{ padding: '12px', textAlign: 'left' }}>File Name</th>
+                  <th style={{ padding: '12px', textAlign: 'left' }}>Format</th>
+                  <th style={{ padding: '12px', textAlign: 'left' }}>Date</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map((item, idx) => (
+                {displayData.map(item => (
                   <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '12px' }}>{item.department_name || '-'}</td>
-                    <td style={{ padding: '12px', fontWeight: '500' }}>
-                      {item.programme_name || item.report_name || '-'}
-                    </td>
-                    {activeTab === 'reports' && (
-                      <td style={{ padding: '12px' }}>
-                        {item.report_date ? new Date(item.report_date).toLocaleDateString('en-IN') : '-'}
-                      </td>
-                    )}
-                    <td style={{ padding: '12px', fontSize: '12px', color: '#666', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {typeof item.data === 'string' ? item.data : JSON.stringify(item.data).substring(0, 100)}...
-                    </td>
+                    <td style={{ padding: '12px' }}>{item.file_name}</td>
+                    <td style={{ padding: '12px' }}>{item.file_format?.toUpperCase()}</td>
+                    <td style={{ padding: '12px' }}>{new Date(item.created_at).toLocaleDateString()}</td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
-                      {isSuperAdmin && (
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          style={{
-                            padding: '6px 12px',
-                            background: '#F44336',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            fontSize: '12px'
-                          }}
-                        >
-                          <FiTrash2 size={14} /> Delete
-                        </button>
-                      )}
+                      <button
+                        onClick={async () => {
+                          const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${item.id}`;
+                          const response = await fetch(url, {
+                            headers: { 'Authorization': `Bearer ${user.token}` }
+                          });
+                          if (!response.ok) {
+                            alert('Failed to download file');
+                            return;
+                          }
+                          const blob = await response.blob();
+                          const a = document.createElement('a');
+                          a.href = window.URL.createObjectURL(blob);
+                          a.download = item.file_name;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(a.href);
+                          document.body.removeChild(a);
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#388e3c',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          marginRight: '8px'
+                        }}
+                      >
+                        <FiDownload /> Download
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item)}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#d32f2f',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <FiTrash2 />
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </>
+      )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+      {/* Delete Reason Modal (moved outside table/card map) */}
+      {showDeleteReasonModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
           <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '10px',
-            marginTop: '20px',
-            padding: '20px'
+            background: 'white',
+            padding: '24px',
+            borderRadius: '8px',
+            minWidth: '400px',
+            boxShadow: '0 2px 16px rgba(0,0,0,0.2)'
           }}>
-            <button
-              onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-              disabled={currentPage === 0}
+            <h3>Delete File</h3>
+            <p>Please provide a reason for deleting this file:</p>
+            <textarea
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Enter reason..."
               style={{
-                padding: '8px 16px',
-                background: currentPage === 0 ? '#ccc' : '#667eea',
-                color: '#fff',
-                border: 'none',
+                width: '100%',
+                minHeight: '100px',
+                padding: '8px',
                 borderRadius: '4px',
-                cursor: currentPage === 0 ? 'not-allowed' : 'pointer'
+                border: '1px solid #ccc',
+                marginBottom: '16px',
+                fontFamily: 'Arial, sans-serif'
               }}
-            >
-              Previous
-            </button>
-            <span style={{ padding: '8px 16px', background: '#f5f5f5', borderRadius: '4px' }}>
-              Page {currentPage + 1} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))}
-              disabled={currentPage === totalPages - 1}
-              style={{
-                padding: '8px 16px',
-                background: currentPage === totalPages - 1 ? '#ccc' : '#667eea',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: currentPage === totalPages - 1 ? 'not-allowed' : 'pointer'
-              }}
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        {/* Import History */}
-        {isSuperAdmin && importHistory.length > 0 && (
-          <div style={{ marginTop: '40px' }}>
-            <h2>Import History</h2>
-            <div className="table-wrapper">
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>File Name</th>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>Type</th>
-                    <th style={{ padding: '12px', textAlign: 'center' }}>Total</th>
-                    <th style={{ padding: '12px', textAlign: 'center' }}>Success</th>
-                    <th style={{ padding: '12px', textAlign: 'center' }}>Failed</th>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>Status</th>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {importHistory.slice(0, 10).map((record, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '12px' }}>{record.file_name || '-'}</td>
-                      <td style={{ padding: '12px' }}>{record.import_type || '-'}</td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>{record.total_records || 0}</td>
-                      <td style={{ padding: '12px', textAlign: 'center', color: '#4CAF50', fontWeight: '600' }}>
-                        {record.successful_records || 0}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'center', color: '#F44336', fontWeight: '600' }}>
-                        {record.failed_records || 0}
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{
-                          padding: '4px 8px',
-                          background: record.status === 'completed' ? '#c8e6c9' : '#fff3cd',
-                          color: record.status === 'completed' ? '#2e7d32' : '#856404',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '600'
-                        }}>
-                          {record.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', fontSize: '12px' }}>
-                        {new Date(record.created_at).toLocaleDateString('en-IN')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            />
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => {
+                  setShowDeleteReasonModal(false);
+                  setDeleteReason('');
+                  setSelectedToDelete(null);
+                }}
+                style={{
+                  padding: '8px 16px',
+                  background: '#ccc',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                style={{
+                  padding: '8px 16px',
+                  background: '#d32f2f',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Delete
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
-};
+}
 
 export default FlagshipProgrammes;

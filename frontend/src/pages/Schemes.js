@@ -8,6 +8,10 @@ import './Schemes.css';
 
 const Schemes = () => {
   const location = useLocation();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isHOD = user.role === 'hod';
+  const userHodId = user.hod;
+
   const [hods, setHods] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +117,7 @@ const Schemes = () => {
       setFinancialRows([]); // Clear before fetching to force fresh render
       
       const [hodsRes, categoriesRes, financialRes] = await Promise.all([
-        getHODs(),
+        isHOD ? Promise.resolve({ data: [] }) : getHODs(),
         getCategories(),
         fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`) // Add cache-buster
           .then(res => res.json())
@@ -172,6 +176,7 @@ setRevenueData(sorted);
 // ===============================
 const fetchCentralSchemes = async (year = financialYear) => {
   try {
+    const hodParam = isHOD ? `&hodId=${userHodId}` : '';
     const res = await fetch(
       `http://localhost:5000/api/schemes/financial-progress?year=${year}&_t=${Date.now()}`
     );

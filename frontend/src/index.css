@@ -728,6 +728,54 @@ body {
   min-width: 18px;
 }
 
+.nav-item-expandable {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-item-expandable .chevron-icon {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  font-size: 14px;
+}
+
+.nav-item-expandable.expanded .chevron-icon {
+  transform: rotate(180deg);
+}
+
+.nav-sub-items {
+  background: rgba(0, 0, 0, 0.1);
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  margin: 0 8px 0 20px;
+  border-radius: 0 4px 4px 0;
+}
+
+.nav-sub-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px 10px 20px;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  font-weight: 400;
+  border-left: 3px solid transparent;
+}
+
+.nav-sub-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-left-color: #81c784;
+}
+
+.nav-sub-item.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-left-color: #81c784;
+  font-weight: 500;
+}
+
 .sidebar.collapsed .nav-item svg {
   margin-right: 0;
 }
