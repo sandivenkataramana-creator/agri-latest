@@ -37,12 +37,114 @@ async function authenticateJWT(req, res, next) {
       return res.status(401).json({ error: 'User not found' });
     }
     req.user = { ...payload, ...rows[0] };
+    console.log('[authenticateJWT] Merged user object:', { id: req.user.id, role: req.user.role, hod_id: req.user.hod_id });
     next();
   } catch (err) {
     console.warn('authenticateJWT: token verification failed:', err.message);
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
+
+// async function handleUpload(req, res, uploadType) {
+//   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+//   const hodId = req.user.hod_id;
+//   if (!hodId) return res.status(400).json({ error: 'No hod_id' });
+
+//   const [hod] = await db.query('SELECT id FROM hods WHERE id = ?', [hodId]);
+//   if (!hod.length) return res.status(400).json({ error: 'Invalid HOD' });
+
+//   const fileFormat = req.body.fileFormat || req.file.originalname.split('.').pop();
+//   const description = req.body.description || '';
+
+//   const [result] = await db.query(
+//     'INSERT INTO uploads (file_name, file_path, upload_type, file_format, hod_id, description, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+//     [
+//       req.file.originalname,
+//       req.file.path,
+//       uploadType,
+//       fileFormat,
+//       hodId,
+//       req.user.id,
+//       req.user.username
+//     ]
+
+//   );
+
+
+//   res.json({ success: true, id: result.insertId });
+// }
+
+const handleUpload = (uploadType) => {
+  return async (req, res) => {
+    try {
+      console.log('[handleUpload] uploadType:', uploadType);
+      console.log('[handleUpload] req.file:', req.file ? req.file.originalname : 'NO FILE');
+      console.log('[handleUpload] req.user:', req.user);
+      
+      if (!req.file) {
+        console.error('[handleUpload] No file in request');
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const hodId = req.user?.hod_id;
+      if (!hodId) {
+        console.error('[handleUpload] No hod_id in user:', req.user);
+        return res.status(400).json({ error: 'No hod_id found. User must be a HOD.' });
+      }
+
+      const [hod] = await db.query(
+        'SELECT id FROM hods WHERE id = ?',
+        [hodId]
+      );
+
+      if (!hod || hod.length === 0) {
+        console.error('[handleUpload] HOD not found for id:', hodId);
+        return res.status(400).json({ error: 'Invalid HOD. HOD record not found in database.' });
+      }
+
+      const fileFormat =
+        req.body.fileFormat || req.file.originalname.split('.').pop();
+
+      const description = req.body.description || '';
+
+      console.log('[handleUpload] Inserting file:', {
+        hodId,
+        fileName: req.file.originalname,
+        filePath: req.file.path,
+        fileFormat,
+        uploadType,
+        description
+      });
+
+      const [result] = await db.query(
+        `
+        INSERT INTO hod_uploads
+        (hod_id, file_name, file_path, file_format, upload_type, description)
+        VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        [
+          hodId,
+          req.file.originalname,
+          req.file.path,
+          fileFormat,
+          uploadType,
+          description
+        ]
+      );
+      
+      console.log('[handleUpload] File inserted successfully, id:', result.insertId);
+      
+      res.status(201).json({
+        success: true,
+        id: result.insertId
+      });
+    } catch (err) {
+      console.error('[handleUpload] Error:', err);
+      res.status(500).json({ error: 'Upload failed: ' + err.message });
+    }
+  };
+};
 
 function requireRole(allowedRoles) {
   return (req, res, next) => {
@@ -56,4 +158,4 @@ function requireRole(allowedRoles) {
   };
 }
 
-module.exports = { authenticateJWT, requireRole, signToken };
+module.exports = { authenticateJWT, requireRole, signToken ,handleUpload};

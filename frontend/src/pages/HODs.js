@@ -28,7 +28,7 @@ const HODs = () => {
   });
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(50);
   
   // Parse user from localStorage once, at initialization
   const [user] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
@@ -270,7 +270,7 @@ const HODs = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredHods.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((hod, index) => (
+              {hods.slice(currentPage * pageSize, (currentPage + 1) * pageSize).map((hod, index) => (
                 <tr key={hod.id}>
                   <td><strong>{currentPage * pageSize + index + 1}</strong></td>
                   <td>{hod.name}</td>
@@ -305,7 +305,7 @@ const HODs = () => {
         </div>
         <div className="pagination" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', borderTop: '1px solid #e0e0e0' }}>
           <span style={{ fontSize: '14px', color: '#666' }}>
-            {filteredHods.length === 0 ? 0 : currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, filteredHods.length)} of {filteredHods.length.toLocaleString()}
+            {currentPage * pageSize + 1}-{Math.min((currentPage + 1) * pageSize, hods.length)} of {hods.length.toLocaleString()}
           </span>
           <button 
             disabled={currentPage === 0} 
@@ -315,9 +315,9 @@ const HODs = () => {
             &lt;
           </button>
           <button 
-            disabled={(currentPage + 1) * pageSize >= filteredHods.length} 
+            disabled={(currentPage + 1) * pageSize >= hods.length} 
             onClick={() => setCurrentPage(currentPage + 1)}
-            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #d0d7de', background: 'white', cursor: (currentPage + 1) * pageSize >= filteredHods.length ? 'not-allowed' : 'pointer', opacity: (currentPage + 1) * pageSize >= filteredHods.length ? 0.5 : 1 }}
+            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #d0d7de', background: 'white', cursor: (currentPage + 1) * pageSize >= hods.length ? 'not-allowed' : 'pointer', opacity: (currentPage + 1) * pageSize >= hods.length ? 0.5 : 1 }}
           >
             &gt;
           </button>

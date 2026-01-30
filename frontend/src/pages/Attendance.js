@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Modal from '../components/Modal';
 import './Attendance.css';
@@ -41,11 +41,31 @@ ChartJS.register(
 const Attendance = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
+  // Get user from localStorage
+  const [user, setUser] = useState(null);
+  const [isHOD, setIsHOD] = useState(false);
+  const [userHodId, setUserHodId] = useState(null);
+  
+  // Initialize user data on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      setIsHOD(userData.role === 'hod');
+      setUserHodId(userData.hod_id || null);
+    }
+  }, []);
+  
+  // Track if HOD filter has been initialized
+  const hodFilterInitialized = useRef(false);
+  
   // Data states
   const [attendance, setAttendance] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [staffList, setStaffList] = useState([]);
   const [hodList, setHodList] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [departmentData, setDepartmentData] = useState([]);
   
   // UI states
@@ -64,7 +84,7 @@ const Attendance = () => {
   const [filters, setFilters] = useState({
     period: searchParams.get('period') || 'today',
     status: searchParams.get('status') || 'all',
-    hod_id: searchParams.get('hod_id') || '',
+    hod_id: isHOD ? userHodId : (searchParams.get('hod_id') || ''),
     department: searchParams.get('department') || '',
     employee_type: searchParams.get('employee_type') || 'all',
     start_date: searchParams.get('start_date') || '',
@@ -76,16 +96,17 @@ const Attendance = () => {
   
   const [formData, setFormData] = useState({
     staff_id: '',
-    hod_id: '',
+    hod_id: isHOD ? userHodId : '',
     date: new Date().toISOString().split('T')[0],
     status: 'present',
     check_in: '',
     check_out: '',
     remarks: ''
   });
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isSuperAdmin = user.role === 'superadmin';
+  const isSuperAdmin = user?.role === 'superadmin';
   const isReadOnly = !isSuperAdmin;
+  
+  console.log('User from localStorage:', user);
 
   const fetchInitialData = async () => {
     try {
@@ -104,11 +125,26 @@ const Attendance = () => {
     try {
       setLoading(true);
       const params = { ...filters };
-      
+
+      // For HOD users, send hod_id instead of department filter (backend scopes by hod_id)
+      if (user?.role === 'hod' && user?.hod_id) {
+        params.hod_id = user.hod_id;
+        delete params.department; // Remove department from params, backend will scope by hod_id
+      }
+
       // Remove empty params
       Object.keys(params).forEach(key => {
-        if (!params[key] || params[key] === 'all') delete params[key];
+        if (
+          params[key] === '' ||
+          params[key] === 'all' ||
+          params[key] === null ||
+          params[key] === undefined
+        ) {
+          delete params[key];
+        }
       });
+
+      console.log('Fetching attendance with params:', params);
 
       const [attendanceRes, statsRes, deptRes] = await Promise.all([
         getAttendanceFiltered(params),
@@ -126,17 +162,44 @@ const Attendance = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, user?.role, user?.hod_id]);
 
   // Fetch initial data
   useEffect(() => {
     fetchInitialData();
   }, []);
 
+  // Auto-set department filter for HOD users on initial load
+  useEffect(() => {
+    console.log('User:', user);
+console.log('HOD list:', hodList);
+console.log('Filters:', filters);
+
+  if (
+    user?.role === 'hod' &&
+    user?.hod_id &&
+    hodList.length > 0 &&
+    !filters.department
+  ) {
+    const hod = hodList.find(h => h.id === user.hod_id);
+
+    if (hod?.department) {
+      console.log('✅ Auto-setting HOD department:', hod.department);
+
+      setFilters(prev => ({
+        ...prev,
+        department: hod.department
+      }));
+    }
+  }
+}, [user?.role, user?.hod_id, hodList, filters.department]);
+
+
   // Fetch attendance when filters change
   useEffect(() => {
+    console.log('Filters changed, fetching data:', filters);
     fetchAttendanceData();
-  }, [fetchAttendanceData]);
+  }, [filters, fetchAttendanceData]);
 
   // Calculate statistics from current data
   const stats = useMemo(() => {
@@ -242,15 +305,41 @@ const Attendance = () => {
   }, [stats]);
 
   // Get unique departments from HOD list
+  // If user is HOD, only show their department
   const uniqueDepartments = useMemo(() => {
     const departments = new Set();
-    hodList.forEach(hod => {
-      if (hod.department) {
-        departments.add(hod.department);
+    
+    console.log('Building uniqueDepartments - user.role:', user?.role, 'user.hod_id:', user?.hod_id, 'user.department:', user?.department, 'hodList.length:', hodList.length);
+    
+    if (user?.role === 'hod') {
+      // For HOD, try to find by hod_id first, then by department name
+      if (user?.hod_id) {
+        const hodData = hodList.find(h => h.id === user?.hod_id);
+        if (hodData && hodData.department) {
+          departments.add(hodData.department);
+          console.log('Found HOD by ID, department:', hodData.department);
+        }
       }
-    });
-    return Array.from(departments).sort();
-  }, [hodList]);
+      
+      // If not found by ID, try by department name
+      if (departments.size === 0 && user?.department) {
+        departments.add(user.department);
+        console.log('Using user department directly:', user.department);
+      }
+    } else {
+      // For superadmin, show all departments
+      hodList.forEach(hod => {
+        if (hod.department) {
+          departments.add(hod.department);
+        }
+      });
+      console.log('Super admin - showing all departments');
+    }
+    
+    const result = Array.from(departments).sort();
+    console.log('Final uniqueDepartments:', result);
+    return result;
+  }, [hodList, user?.role, user?.hod_id, user?.department]);
 
   // Chart options
   const barChartOptions = {
@@ -323,9 +412,10 @@ const Attendance = () => {
     const newFilters = { ...filters, [key]: value };
     
     // If custom period, don't set period
-    if (key === 'start_date' || key === 'end_date') {
-      newFilters.period = 'custom';
-    }
+   if (key === 'start_date' || key === 'end_date') {
+  delete newFilters.period; // backend will use start_date + end_date
+}
+
     
     setFilters(newFilters);
     
@@ -369,6 +459,7 @@ const Attendance = () => {
   };
 
   // Handle department status card click to open popup with department employees
+  // eslint-disable-next-line no-unused-vars
   const handleDepartmentStatusPopup = (department, departmentName, status, title, employees) => {
     setStatusPopup({ 
       open: true, 
@@ -612,13 +703,13 @@ const Attendance = () => {
             value={filters.period} 
             onChange={(e) => handleFilterChange('period', e.target.value)}
             className="filter-select-modern"
-          ><option value="today">📅 Today</option>
-<option value="week">📆 This Week</option>
-<option value="month">🗓️ This Month</option>
-<option value="quarter">📊 This Quarter</option>
-<option value="year">📅 This Year</option>
-<option value="custom">🛠️ Custom Range</option>
-
+          >
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="quarter">This Quarter</option>
+            <option value="year">This Year</option>
+            <option value="custom">Custom Range</option>
           </select>
         </div>
 
@@ -654,9 +745,10 @@ const Attendance = () => {
             value={filters.department} 
             onChange={(e) => handleFilterChange('department', e.target.value)}
             className="filter-select-modern"
+            disabled={user?.role === 'hod'}
+            title={user?.role === 'hod' ? 'HOD can only view their own department' : ''}
           >
-           <option value="">🏢 All Departments</option>
-
+            {user?.role === 'superadmin' && <option value="">All Departments</option>}
             {uniqueDepartments.map(dept => (
               <option key={dept} value={dept}>
                 {dept}
@@ -675,10 +767,9 @@ const Attendance = () => {
             onChange={(e) => handleFilterChange('employee_type', e.target.value)}
             className="filter-select-modern"
           >
-           <option value="all">📋 All Types</option>
-<option value="regular">👤 Regular</option>
-<option value="outsource">🤝 OD</option>
-
+            <option value="all">All Types</option>
+            <option value="regular">Regular</option>
+            <option value="outsource">OD</option>
           </select>
         </div>
 

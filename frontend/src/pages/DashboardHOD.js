@@ -74,14 +74,18 @@ const DashboardHOD = () => {
     }
   };
 
-  const formatCurrency = (value) => {
-    if (value >= 10000000) {
-      return `₹${(value / 10000000).toFixed(2)} Cr`;
-    } else if (value >= 100000) {
-      return `₹${(value / 100000).toFixed(2)} L`;
-    }
-    return `₹${value.toLocaleString()}`;
-  };
+ const formatCurrency = (value) => {
+  const num = Number(value || 0);
+
+  if (num >= 10000000) {
+    return `₹${(num / 10000000).toFixed(2)} Cr`;
+  } else if (num >= 100000) {
+    return `₹${(num / 100000).toFixed(2)} L`;
+  }
+
+  return `₹${num.toLocaleString('en-IN')}`;
+};
+
 
   const budgetUtilization = budget.allocated > 0 
     ? ((budget.utilized / budget.allocated) * 100).toFixed(1) 
@@ -239,7 +243,7 @@ const DashboardHOD = () => {
                 <tr key={index}>
                   <td>{scheme.scheme_name || scheme.name}</td>
                   <td>{scheme.scheme_category}</td>
-                  <td>{formatCurrency(scheme.total_budget)}</td>
+                  <td>{formatCurrency(scheme.total_budget || 0)}</td>
                   <td><span className={`status-badge ${scheme.status.toLowerCase()}`}>{scheme.status}</span></td>
                 </tr>
               ))}

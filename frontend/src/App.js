@@ -24,6 +24,9 @@ import Settings from './pages/Settings';
 import SendNotification from './pages/SendNotification';
 import SendMessage from './pages/SendMessage';
 import Employees from './pages/Employees';
+import Reports from './pages/Reports';
+import UploadedFiles from './pages/UploadedFiles';
+import DeletionLogs from './pages/DeletionLogs';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -94,6 +97,8 @@ function App() {
                       <Route path="/kpis" element={<KPIs />} />
                       <Route path="/nodal-officers" element={<NodalOfficers />} />
                       <Route path="/attendance" element={<Attendance />} />
+                      <Route path="/uploaded-files" element={<UploadedFiles />} />
+                      <Route path="/deletion-logs" element={<DeletionLogs />} />
                       {user.role === 'superadmin' && <Route path="/send-notification" element={<SendNotification />} />}
                       {user.role === 'superadmin' && <Route path="/send-message" element={<SendMessage />} />}
                     </>
@@ -101,8 +106,13 @@ function App() {
                   {((user.role === 'admin' || user.role === 'superadmin') || user.role === 'hod') && (
                     <>
                     <Route path="/employees" element={<Employees />} />
+                      <Route path="/dao" element={<DAO />} />
                       <Route path="/attendance" element={<Attendance />} />
                       <Route path="/beneficiaries" element={<Beneficiaries />} />
+                      <Route path="/schemes" element={<Schemes />} />
+                      {user.role === 'hod' && <Route path="/flagship-programmes" element={<FlagshipProgrammes />} />}
+                      {user.role === 'hod' && <Route path="/reports" element={<Reports />} />}
+                      {user.role === 'hod' && <Route path="/budget" element={<Budget />} />}
                     </>
                   )}
                   <Route path="/settings" element={<Settings />} />

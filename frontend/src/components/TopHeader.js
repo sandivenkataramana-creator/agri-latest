@@ -129,7 +129,7 @@ const TopHeader = ({ user, onLogout, onToggleSidebar }) => {
         <div className="top-header-logo" onClick={() => navigate('/dashboard') } title="Go to Home" style={{ cursor: 'pointer' }}>
           <img src={process.env.REACT_APP_HEADER_LOGO || '/tglogo.png'} alt="Logo" style={{ height: 40, borderRadius: 8, marginRight: 12 }} />
           <div>
-            <h1>AGRI DEMO</h1>
+            <h1>Telangana Agriculture and Co-Operation Department</h1>
             <span>Telangana State</span>
           </div>
         </div>

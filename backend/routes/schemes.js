@@ -2,7 +2,164 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
+// ============ IMPORTANT: SPECIFIC ROUTES MUST COME BEFORE PARAMETERIZED ROUTES ============
+// This ensures /available-years, /financial-progress, /budget-allocations/all, etc.
+// are matched before /:id
+
+// Get available financial years
+router.get('/available-years', async (req, res) => {
+  try {
+    const [results] = await db.query(`
+      SELECT DISTINCT financial_year
+      FROM schemes
+      WHERE financial_year IS NOT NULL
+      ORDER BY financial_year DESC
+    `);
+    const years = results.map(r => r.financial_year);
+    res.json(years);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get consolidated financial progress (CSS report style)
+// MUST come before /:id route
+router.get('/financial-progress', async (req, res) => {
+  try {
+    let year = req.query.year || '2025-26';
+    const hodId = req.query.hodId ? Number(req.query.hodId) : null;
+    
+    // Normalize year format - accept both "2025-26" and "2025-2026"
+    if (year.match(/\d{4}-\d{2}$/)) {
+      // Already in format 2025-26
+    } else if (year.match(/\d{4}-\d{4}$/)) {
+      // Convert 2025-2026 to 2025-26
+      year = year.split('-')[0] + '-' + year.split('-')[1].substring(2);
+    }
+    
+    // Prevent caching
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
+    // Build WHERE clause - try to match year in multiple formats
+    const year4digit = year.split('-')[0];
+    let whereClause = 'WHERE (financial_year = ? OR financial_year LIKE ?) AND status IN ("active", "ACTIVE")';
+    const params = [year, `${year4digit}%`];
+    
+    if (hodId) {
+      whereClause += ' AND hod_id = ?';
+      params.push(hodId);
+    }
+    
+    // Try primary query first (with all financial columns)
+    try {
+      const [results] = await db.query(
+        `SELECT
+           id,
+           scheme_name,
+           COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
+           hod,
+           NULL AS hod_id,
+           financial_year,
+           COALESCE(allocation_goi_share, 0) AS allocation_goi_share,
+           COALESCE(allocation_state_share, 0) AS allocation_state_share,
+           COALESCE(allocation_total, 0) AS allocation_total,
+           COALESCE(slsc_goi_share, 0) AS slsc_goi_share,
+           COALESCE(slsc_state_share, 0) AS slsc_state_share,
+           COALESCE(slsc_total, 0) AS slsc_total,
+           COALESCE(sanction_goi_share, 0) AS sanction_goi_share,
+           COALESCE(sanction_state_share, 0) AS sanction_state_share,
+           COALESCE(sanction_total, 0) AS sanction_total,
+           COALESCE(bro_released_amount, 0) AS bro_released_amount,
+           COALESCE(dt_authorized_amount, 0) AS dt_authorized_amount,
+           COALESCE(bills_preferred_count, 0) AS bills_preferred_count,
+           COALESCE(bills_preferred_amount, 0) AS bills_preferred_amount,
+           oldest_bill_date,
+           COALESCE(bills_cleared_count, 0) AS bills_cleared_count,
+           COALESCE(bills_cleared_amount, 0) AS bills_cleared_amount,
+           latest_bill_date,
+           remark
+         FROM schemes
+         ${whereClause}
+         ORDER BY scheme_name;
+        `,
+        params
+      );
+      console.log('Financial-progress query result:', { year, hodId, count: results.length, firstItem: results[0] });
+      return res.json(results);
+    } catch (innerErr) {
+      console.warn('Primary financial-progress query failed, attempting fallback:', innerErr.message);
+      
+      const [fallbackResults] = await db.query(
+        `SELECT
+           id,
+           scheme_name,
+           COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
+           hod,
+           NULL AS hod_id,
+           financial_year,
+           0 AS allocation_goi_share,
+           0 AS allocation_state_share,
+           0 AS allocation_total,
+           0 AS slsc_goi_share,
+           0 AS slsc_state_share,
+           0 AS slsc_total,
+           0 AS sanction_goi_share,
+           0 AS sanction_state_share,
+           0 AS sanction_total,
+           0 AS bro_released_amount,
+           0 AS dt_authorized_amount,
+           0 AS bills_preferred_count,
+           0 AS bills_preferred_amount,
+           NULL AS oldest_bill_date,
+           0 AS bills_cleared_count,
+           0 AS bills_cleared_amount,
+           NULL AS latest_bill_date,
+           NULL AS remark
+         FROM schemes
+         ${whereClause}
+         ORDER BY scheme_name;
+        `,
+        params
+      );
+      console.log('Fallback financial-progress query result:', { year, hodId, count: fallbackResults.length });
+      return res.json(fallbackResults);
+    }
+  } catch (error) {
+    console.error('Error in financial-progress endpoint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get scheme by ID with full details
+// MUST come AFTER specific routes like /financial-progress
+router.get('/:id', async (req, res) => {
+  try {
+    const [results] = await db.query(`
+      SELECT s.*, h.name as hod_name, h.department 
+      FROM schemes s 
+      LEFT JOIN hods h ON s.hod_id = h.id 
+      WHERE s.id = ?
+    `, [req.params.id]);
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Scheme not found' });
+    }
+    
+    // Get budget allocations for this scheme
+    const [budgetAllocations] = await db.query(
+      'SELECT * FROM scheme_budget_allocation WHERE scheme_id = ?',
+      [req.params.id]
+    );
+    
+    res.json({ ...results[0], budget_allocations: budgetAllocations });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all schemes with budget allocation
+// Comes after specific /:id route above
 router.get('/', async (req, res) => {
   try {
     try {
@@ -39,119 +196,6 @@ router.get('/', async (req, res) => {
       `);
       return res.json(fallback);
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get consolidated financial progress (CSS report style)
-router.get('/financial-progress', async (req, res) => {
-  try {
-    const year = req.query.year || '2025-26';
-    
-    // Prevent caching
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    
-    // Try primary query first (with all financial columns)
-    try {
-      const [results] = await db.query(
-        `SELECT
-           id,
-           scheme_name,
-           COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
-           hod,
-           financial_year,
-           COALESCE(allocation_goi_share, 0) AS allocation_goi_share,
-           COALESCE(allocation_state_share, 0) AS allocation_state_share,
-           COALESCE(allocation_total, 0) AS allocation_total,
-           COALESCE(slsc_goi_share, 0) AS slsc_goi_share,
-           COALESCE(slsc_state_share, 0) AS slsc_state_share,
-           COALESCE(slsc_total, 0) AS slsc_total,
-           COALESCE(sanction_goi_share, 0) AS sanction_goi_share,
-           COALESCE(sanction_state_share, 0) AS sanction_state_share,
-           COALESCE(sanction_total, 0) AS sanction_total,
-           COALESCE(bro_released_amount, 0) AS bro_released_amount,
-           COALESCE(dt_authorized_amount, 0) AS dt_authorized_amount,
-           COALESCE(bills_preferred_count, 0) AS bills_preferred_count,
-           COALESCE(bills_preferred_amount, 0) AS bills_preferred_amount,
-           oldest_bill_date,
-           COALESCE(bills_cleared_count, 0) AS bills_cleared_count,
-           COALESCE(bills_cleared_amount, 0) AS bills_cleared_amount,
-           latest_bill_date,
-           remark
-         FROM schemes
-         WHERE financial_year = ? AND status IN ('active', 'ACTIVE')
-         ORDER BY scheme_name;
-        `,
-        [year]
-      );
-      console.log('Financial-progress query result:', { year, count: results.length, firstItem: results[0] });
-      return res.json(results);
-    } catch (innerErr) {
-      console.warn('Primary financial-progress query failed, attempting fallback:', innerErr.message);
-      
-      const [fallbackResults] = await db.query(
-        `SELECT
-           id,
-           scheme_name,
-           COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
-           hod,
-           financial_year,
-           0 AS allocation_goi_share,
-           0 AS allocation_state_share,
-           0 AS allocation_total,
-           0 AS slsc_goi_share,
-           0 AS slsc_state_share,
-           0 AS slsc_total,
-           0 AS sanction_goi_share,
-           0 AS sanction_state_share,
-           0 AS sanction_total,
-           0 AS bro_released_amount,
-           0 AS dt_authorized_amount,
-           0 AS bills_preferred_count,
-           0 AS bills_preferred_amount,
-           NULL AS oldest_bill_date,
-           0 AS bills_cleared_count,
-           0 AS bills_cleared_amount,
-           NULL AS latest_bill_date,
-           NULL AS remark
-         FROM schemes
-         WHERE financial_year = ? AND status IN ('active', 'ACTIVE')
-         ORDER BY scheme_name;
-        `,
-        [year]
-      );
-      console.log('Fallback financial-progress query result:', { year, count: fallbackResults.length });
-      return res.json(fallbackResults);
-    }
-  } catch (error) {
-    console.error('Error in financial-progress endpoint:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get scheme by ID with full details
-router.get('/:id', async (req, res) => {
-  try {
-    const [results] = await db.query(`
-      SELECT s.*, h.name as hod_name, h.department 
-      FROM schemes s 
-      LEFT JOIN hods h ON s.hod_id = h.id 
-      WHERE s.id = ?
-    `, [req.params.id]);
-    if (results.length === 0) {
-      return res.status(404).json({ message: 'Scheme not found' });
-    }
-    
-    // Get budget allocations for this scheme
-    const [budgetAllocations] = await db.query(
-      'SELECT * FROM scheme_budget_allocation WHERE scheme_id = ?',
-      [req.params.id]
-    );
-    
-    res.json({ ...results[0], budget_allocations: budgetAllocations });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
