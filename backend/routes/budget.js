@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
     let results;
     try {
       [results] = await db.query(`
-        SELECT b.*, h.name as hod_name, h.department as department, s.scheme_name as scheme_name, st.name as state_name, d.name as district_name, m.name as mandal_name, da.name as dao_name
+        SELECT b.*, h.name as hod_name, h.department as department, s.scheme_name as scheme_name, st.name as state_name, d.name as district_name, m.name as mandal_name, da.employee_name AS dao_name
         FROM budget b
         LEFT JOIN hods h ON b.hod_id = h.id
         LEFT JOIN schemes s ON b.scheme_id = s.id
@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [results] = await db.query(`
-      SELECT b.*, h.name as hod_name, h.department as department, s.scheme_name as scheme_name, st.name as state_name, d.name as district_name, m.name as mandal_name, da.name as dao_name
+      SELECT b.*, h.name as hod_name, h.department as department, s.scheme_name as scheme_name, st.name as state_name, d.name as district_name, m.name as mandal_name, da.employee_name AS dao_name
       FROM budget b 
       LEFT JOIN hods h ON b.hod_id = h.id 
       LEFT JOIN schemes s ON b.scheme_id = s.id 
@@ -59,7 +59,7 @@ router.get('/:id', async (req, res) => {
 router.get('/hod/:hodId', async (req, res) => {
   try {
     const [results] = await db.query(`
-      SELECT b.*, s.scheme_name as scheme_name, st.name as state_name, d.name as district_name, m.name as mandal_name, da.name as dao_name
+      SELECT b.*, s.scheme_name as scheme_name, st.name as state_name, d.name as district_name, m.name as mandal_name, da.employee_name AS dao_name
       FROM budget b 
       LEFT JOIN schemes s ON b.scheme_id = s.id 
       LEFT JOIN dao da ON b.dao_id = da.id

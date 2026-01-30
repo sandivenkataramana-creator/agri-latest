@@ -25,7 +25,7 @@ const HODs = () => {
   });
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(50);
   
   // Parse user from localStorage once, at initialization
   const [user] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));

@@ -8,7 +8,7 @@ const superAdminOnly = [authenticateJWT, requireRole('superadmin')];
 // Get all DAOs
 router.get('/', async (req, res) => {
   try {
-    const [results] = await db.query('SELECT * FROM dao ORDER BY name');
+    const [results] = await db.query('SELECT * FROM dao ORDER BY employee_name');
     res.json(results);
   } catch (error) {
     console.error('Error fetching DAOs:', error);
@@ -32,10 +32,10 @@ router.get('/:id', async (req, res) => {
 // Create DAO
 router.post('/', ...superAdminOnly, async (req, res) => {
   try {
-    const { name, department, email, phone, status } = req.body;
+    const { employee_name,  district_name, division_name, mandal_name, cadre, regular_incharge, present_cadre, email, office_mobile_no, present_office, status } = req.body;
     const [result] = await db.query(
-      'INSERT INTO dao (name, department, email, phone, status) VALUES (?, ?, ?, ?, ?)',
-      [name, department, email, phone, status || 'active']
+      'INSERT INTO dao (employee_name, district_name, division_name, mandal_name, cadre, regular_incharge, present_cadre, email, office_mobile_no, present_office,status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [employee_name, district_name, division_name, mandal_name, cadre, regular_incharge, present_cadre,email , office_mobile_no , present_office,status || 'active']
     );
     res.status(201).json({ id: result.insertId, message: 'DAO created successfully' });
   } catch (error) {
@@ -46,10 +46,10 @@ router.post('/', ...superAdminOnly, async (req, res) => {
 // Update DAO
 router.put('/:id', ...superAdminOnly, async (req, res) => {
   try {
-    const { name, department, email, phone, status } = req.body;
+    const { employee_name,  district_name, division_name, mandal_name, cadre, regular_incharge, present_cadre, email, office_mobile_no, present_office, status } = req.body;
     await db.query(
-      'UPDATE dao SET name = ?, department = ?, email = ?, phone = ?, status = ? WHERE id = ?',
-      [name, department, email, phone, status, req.params.id]
+      'UPDATE dao SET employee_name = ?, district_name = ?, division_name = ?, mandal_name = ?, cadre = ?, regular_incharge = ?, present_cadre = ?, email = ?, office_mobile_no = ?, present_office = ?, status = ? WHERE id = ?',
+      [employee_name, district_name, division_name, mandal_name, cadre, regular_incharge, present_cadre, email , office_mobile_no , present_office,status, req.params.id]
     );
     res.json({ message: 'DAO updated successfully' });
   } catch (error) {

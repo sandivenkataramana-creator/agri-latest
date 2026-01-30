@@ -117,8 +117,9 @@ router.delete('/:id', ...superAdminOnly, async (req, res) => {
 });
 
 // Get attendance statistics with filters
-router.get('/statistics', async (req, res) => {
+router.get('/statistics', authenticateJWT, async (req, res) => {
   try {
+    const { role, hod_id: userHodId } = req.user;
     const { start_date, end_date, hod_id, department, period, status, employee_type } = req.query;
     
     let dateFilter = '';
@@ -139,7 +140,11 @@ router.get('/statistics', async (req, res) => {
       dateFilter = 'WHERE a.date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)';
     }
     
-    if (hod_id) {
+    // HOD restriction - force hod_id for HOD users
+    if (role === 'hod') {
+      dateFilter += dateFilter ? ' AND a.hod_id = ?' : 'WHERE a.hod_id = ?';
+      params.push(userHodId);
+    } else if (hod_id) {
       dateFilter += dateFilter ? ' AND a.hod_id = ?' : 'WHERE a.hod_id = ?';
       params.push(hod_id);
     }
@@ -200,10 +205,18 @@ router.get('/statistics', async (req, res) => {
       dailyFilter = 'WHERE a.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
     }
     
-    if (hod_id) {
-      dailyFilter += ' AND a.hod_id = ?';
-      dailyParams.push(hod_id);
-    }
+    // if (hod_id) {
+    //   dailyFilter += ' AND a.hod_id = ?';
+    //   dailyParams.push(hod_id);
+    // }
+    if (role === 'hod') {
+  dailyFilter += ' AND a.hod_id = ?';
+  dailyParams.push(userHodId);
+} else if (hod_id) {
+  dailyFilter += ' AND a.hod_id = ?';
+  dailyParams.push(hod_id);
+}
+
     if (department) {
       dailyFilter += ' AND h.department = ?';
       dailyParams.push(department);
@@ -235,6 +248,7 @@ router.get('/statistics', async (req, res) => {
     let deptFilter = '';
     let deptParams = [];
     
+    // Date filters
     if (start_date && end_date) {
       deptFilter = 'WHERE a.date BETWEEN ? AND ?';
       deptParams = [start_date, end_date];
@@ -250,15 +264,21 @@ router.get('/statistics', async (req, res) => {
       deptFilter = 'WHERE a.date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)';
     }
     
-    if (hod_id) {
+    // 🔐 HOD restriction
+    if (role === 'hod') {
+      deptFilter += deptFilter ? ' AND a.hod_id = ?' : 'WHERE a.hod_id = ?';
+      deptParams.push(userHodId);
+    } else if (hod_id) {
       deptFilter += deptFilter ? ' AND a.hod_id = ?' : 'WHERE a.hod_id = ?';
       deptParams.push(hod_id);
     }
-
+    
+    // Employee type
     if (employee_type && employee_type !== 'all') {
       deptFilter += deptFilter ? ' AND s.employee_type = ?' : 'WHERE s.employee_type = ?';
       deptParams.push(employee_type);
     }
+
 
     // Get department-wise summary - Fixed: present excludes late arrivals
     const [departmentWise] = await db.query(`
@@ -291,8 +311,9 @@ router.get('/statistics', async (req, res) => {
 });
 
 // Get department-wise attendance with employee lists
-router.get('/department-wise', async (req, res) => {
+router.get('/department-wise', authenticateJWT, async (req, res) => {
   try {
+    const { role, hod_id: userHodId } = req.user;
     const { period, employee_type } = req.query;
 
     const dateCondition = (() => {
@@ -305,13 +326,40 @@ router.get('/department-wise', async (req, res) => {
     })();
 
     const attendanceJoinFilter = dateCondition ? ` AND ${dateCondition}` : '';
-    const safeEmployeeType = ['regular', 'outsource'].includes(String(employee_type || '').toLowerCase())
-      ? String(employee_type).toLowerCase()
-      : null;
-    const whereClause = safeEmployeeType ? `WHERE s.employee_type = ${db.escape(safeEmployeeType)}` : '';
+    
+    let whereClause = '1=1';
     const params = [];
+    
+    // 🔐 HOD restriction - force HOD users to see only their data
+    if (role === 'hod') {
+      whereClause = 'h.id = ?';
+      params.push(userHodId);
+    }
+    
+    // Employee type filter
+    if (employee_type && employee_type !== 'all') {
+      whereClause += ' AND s.employee_type = ?';
+      params.push(employee_type);
+    }
 
     // Get all departments with their attendance counts and employee details
+    // const [departments] = await db.query(`
+    //   SELECT 
+    //     h.id as hod_id,
+    //     h.name as hod_name,
+    //     h.department,
+    //     COUNT(DISTINCT s.id) as total_emp,
+    //     COUNT(CASE WHEN a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:30:00') THEN 1 END) as present,
+    //     COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
+    //     COUNT(CASE WHEN a.status = 'late' OR (a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:30:00') THEN 1 END) as late,
+    //     COUNT(CASE WHEN a.status = 'leave' OR a.status = 'on_leave' THEN 1 END) as emp_leave
+    //   FROM hods h
+    //   LEFT JOIN staff s ON s.hod_id = h.id
+    //   LEFT JOIN attendance a ON a.staff_id = s.id${attendanceJoinFilter}
+    //   ${whereClause}
+    //   GROUP BY h.id, h.name, h.department
+    //   ORDER BY h.department
+    // `, params);
     const [departments] = await db.query(`
       SELECT 
         h.id as hod_id,
@@ -325,12 +373,42 @@ router.get('/department-wise', async (req, res) => {
       FROM hods h
       LEFT JOIN staff s ON s.hod_id = h.id
       LEFT JOIN attendance a ON a.staff_id = s.id${attendanceJoinFilter}
-      ${whereClause}
+      WHERE ${whereClause}
       GROUP BY h.id, h.name, h.department
       ORDER BY h.department
     `, params);
 
+
     // Get detailed employee list for each status in each department
+    // const [employees] = await db.query(`
+    //   SELECT 
+    //     h.id as hod_id,
+    //     h.department,
+    //     s.id as staff_id,
+    //     s.name as staff_name,
+    //     s.employee_id,
+    //     s.designation,
+    //     s.phone,
+    //     s.employee_type,
+    //     a.status,
+    //     a.check_in,
+    //     a.check_out,
+    //     a.date,
+    //     a.remarks,
+    //     CASE 
+    //       WHEN a.status = 'late' THEN 'late'
+    //       WHEN a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:30:00' THEN 'late'
+    //       WHEN a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:30:00') THEN 'present'
+    //       WHEN a.status = 'absent' THEN 'absent'
+    //       WHEN a.status = 'leave' OR a.status = 'on_leave' THEN 'leave'
+    //       ELSE a.status
+    //     END as display_status
+    //   FROM hods h
+    //   LEFT JOIN staff s ON s.hod_id = h.id
+    //   LEFT JOIN attendance a ON a.staff_id = s.id${attendanceJoinFilter}
+    //   ${whereClause}
+    //   ORDER BY h.department, s.name
+    // `, params);
     const [employees] = await db.query(`
       SELECT 
         h.id as hod_id,
@@ -357,9 +435,10 @@ router.get('/department-wise', async (req, res) => {
       FROM hods h
       LEFT JOIN staff s ON s.hod_id = h.id
       LEFT JOIN attendance a ON a.staff_id = s.id${attendanceJoinFilter}
-      ${whereClause}
+      WHERE ${whereClause}
       ORDER BY h.department, s.name
     `, params);
+
 
     // Organize employees by department and status
     const departmentData = departments.map(dept => {
@@ -385,8 +464,15 @@ router.get('/department-wise', async (req, res) => {
 });
 
 // Get filtered attendance records
-router.get('/filtered', async (req, res) => {
+router.get('/filtered', authenticateJWT, async (req, res) => {
   try {
+        const { role, hod_id: userHodId } = req.user;
+
+    // 🔐 FORCE HOD SCOPE
+    if (role === 'hod') {
+      req.query.hod_id = userHodId;
+    }
+
     const { start_date, end_date, hod_id, department, status, period, employee_type } = req.query;
     
     let whereClause = '1=1';

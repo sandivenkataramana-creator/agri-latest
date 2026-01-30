@@ -51,12 +51,32 @@ const Schemes = () => {
     remark: ''
   });
   const [financialYear, setFinancialYear] = useState('2025-26');
+  const [availableYears, setAvailableYears] = useState([]);
   const [financialRows, setFinancialRows] = useState([]);
   const [importing, setImporting] = useState(false);
   // const [importStatus, setImportStatus] = useState(null);
   const fileInputRef = useRef(null);
   const [stateSchemeData, setStateSchemeData] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
+
+  // Fetch available financial years from database
+  useEffect(() => {
+    const fetchAvailableYears = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/schemes/available-years');
+        const years = await response.json();
+        setAvailableYears(years);
+        // Set first available year if exists and not already set
+        if (years.length > 0 && financialYear === '2025-26') {
+          setFinancialYear(years[0]);
+        }
+      } catch (err) {
+        console.error('Error fetching available years:', err);
+        setAvailableYears(['2025-26']); // Fallback
+      }
+    };
+    fetchAvailableYears();
+  }, []);
 
   // Support deep-linking from dashboard: /schemes?filterType=state-scheme&year=2025-26
   useEffect(() => {
@@ -71,43 +91,21 @@ const Schemes = () => {
       setFinancialYear(yr);
     }
   }, [location.search]);
-
-  useEffect(() => {
+   useEffect(() => {
     fetchData();
   }, []);
 
   useEffect(() => {
-    // Refetch data when financial year changes
+    // Fetch all data types on initial load
     if (financialYear) {
-      const fetchFinancialData = async () => {
-        try {
-          console.log('useEffect: Financial year changed to', financialYear, 'fetching data...');
-          const response = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}&_t=₹{Date.now()}`);
-          const data = await response.json();
-          console.log('useEffect: Fetched', data.length, 'records for year', financialYear);
-          setFinancialRows(Array.isArray(data) ? data : []);
-        } catch (err) {
-          console.error('Error fetching financial progress:', err);
-          setFinancialRows([]);
-        }
-      };
-      fetchFinancialData();
+      fetchCentralSchemes();
+      fetchStateSchemeData();
+      fetchRevenueData();
     }
   }, [financialYear]);
 
-  useEffect(() => {
+  
     // Refetch state scheme data when financial year changes
-    if (financialYear && filterType === 'state-scheme') {
-      fetchStateSchemeData();
-    }
-  }, [financialYear, filterType]);
-
-  useEffect(() => {
-    // Refetch revenue data when financial year changes
-    if (financialYear && filterType === 'revenue') {
-      fetchRevenueData();
-    }
-  }, [financialYear, filterType]);
 
   const fetchData = async () => {
     try {
@@ -117,7 +115,7 @@ const Schemes = () => {
       const [hodsRes, categoriesRes, financialRes] = await Promise.all([
         getHODs(),
         getCategories(),
-        fetch(`http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}&_t=₹{Date.now()}`) // Add cache-buster
+        fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`) // Add cache-buster
           .then(res => res.json())
           .catch(err => {
             console.error('Error fetching financial progress:', err);
@@ -129,7 +127,8 @@ const Schemes = () => {
       setCategories(categoriesRes.data || []);
       const financialData = financialRes && Array.isArray(financialRes) ? financialRes : [];
       console.log('Financial data fetched, updating state:', { count: financialData.length, firstItem: financialData[0] });
-      setFinancialRows(financialData);
+      setFinancialRows(sortByName(financialData, 'central_scheme_name', 'asc'));
+
       setError(null);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -142,9 +141,11 @@ const Schemes = () => {
 
   const fetchStateSchemeData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/all?year=₹{financialYear}&_t=₹{Date.now()}`);
+      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/all?year=${financialYear}&_t=${Date.now()}`);
       const data = await response.json();
-      setStateSchemeData(Array.isArray(data) ? data : []);
+     const sorted = sortByName(data, 'name', 'asc');
+setStateSchemeData(sorted);
+
       console.log('State scheme data fetched:', data);
     } catch (err) {
       console.error('Error fetching state scheme data:', err);
@@ -154,9 +155,11 @@ const Schemes = () => {
 
   const fetchRevenueData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/revenue/all?year=₹{financialYear}&_t=₹{Date.now()}`);
+      const response = await fetch(`http://localhost:5000/api/schemes/revenue/all?year=${financialYear}&_t=${Date.now()}`);
       const data = await response.json();
-      setRevenueData(Array.isArray(data) ? data : []);
+      const sorted = sortByName(data, 'cooperativeName', 'asc');
+setRevenueData(sorted);
+
       console.log('Revenue data fetched:', data);
     } catch (err) {
       console.error('Error fetching revenue data:', err);
@@ -170,12 +173,15 @@ const Schemes = () => {
 const fetchCentralSchemes = async (year = financialYear) => {
   try {
     const res = await fetch(
-      `http://localhost:5000/api/schemes/financial-progress?year=₹{year}&_t=₹{Date.now()}`
+      `http://localhost:5000/api/schemes/financial-progress?year=${year}&_t=${Date.now()}`
     );
     const data = await res.json();
 
     console.log('Central schemes refreshed:', data.length);
-    setFinancialRows(Array.isArray(data) ? [...data] : []);
+   const sorted = sortByName(data, 'central_scheme_name', 'asc');
+setFinancialRows(sorted);
+
+
   } catch (err) {
     console.error('Failed to refresh central schemes', err);
     setFinancialRows([]);
@@ -183,6 +189,18 @@ const fetchCentralSchemes = async (year = financialYear) => {
 };
 
 
+const sortByName = (data, key, order = 'asc') => {
+  if (!Array.isArray(data)) return [];
+
+  return [...data].sort((a, b) => {
+    const aVal = (a[key] || '').toString().toLowerCase();
+    const bVal = (b[key] || '').toString().toLowerCase();
+
+    if (aVal < bVal) return order === 'asc' ? -1 : 1;
+    if (aVal > bVal) return order === 'asc' ? 1 : -1;
+    return 0;
+  });
+};
 
 
 
@@ -421,7 +439,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
     const ok = window.confirm('Are you sure you want to delete this state scheme?');
     if (!ok) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/₹{row.id}`, {
+      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/${row.id}`, {
         method: 'DELETE'
       });
       if (!response.ok) {
@@ -440,7 +458,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
     const ok = window.confirm('Are you sure you want to delete this revenue entry?');
     if (!ok) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/revenue/₹{row.id}`, {
+      const response = await fetch(`http://localhost:5000/api/schemes/revenue/${row.id}`, {
         method: 'DELETE'
       });
       if (!response.ok) {
@@ -551,7 +569,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
 
         const isEditing = editingItem?.type === 'state-scheme' && editingItem?.id;
         const url = isEditing
-          ? `http://localhost:5000/api/schemes/state-schemes/₹{editingItem.id}`
+          ? `http://localhost:5000/api/schemes/state-schemes/${editingItem.id}`
           : 'http://localhost:5000/api/schemes/state-schemes';
 
         const response = await fetch(url, {
@@ -584,7 +602,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
 
         const isEditing = editingItem?.type === 'revenue' && editingItem?.id;
         const url = isEditing
-          ? `http://localhost:5000/api/schemes/revenue/₹{editingItem.id}`
+          ? `http://localhost:5000/api/schemes/revenue/${editingItem.id}`
           : 'http://localhost:5000/api/schemes/revenue';
 
         const response = await fetch(url, {
@@ -724,7 +742,7 @@ const parseExcelDate = (value) => {
     const year = date.getUTCFullYear();
 
     // Γ£à Store EXACT Excel date
-    return `₹{year}-₹{month}-₹{day}`;
+    return `${year}-${month}-${day}`;
   }
 
   // String date (already typed)
@@ -734,7 +752,7 @@ const parseExcelDate = (value) => {
       const day = String(d.getDate()).padStart(2, '0');
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const year = d.getFullYear();
-      return `₹{year}-₹{month}-₹{day}`;
+      return `${year}-${month}-${day}`;
     }
   }
 
@@ -759,7 +777,7 @@ const parseExcelDate = (value) => {
             normalizedRow[key] !== undefined && normalizedRow[key] !== '' && normalizedRow[key] !== '-') {
           // Make sure it's not the count column
           if (!key.includes('count') && !key.includes('_no') && !key.includes('bills_count')) {
-            console.log(`Found amount column for ₹{fieldName}: key="₹{key}", value="₹{normalizedRow[key]}"`);
+            console.log(`Found amount column for ${fieldName}: key="${key}", value="${normalizedRow[key]}"`);
             return normalizedRow[key];
           }
         }
@@ -772,7 +790,7 @@ const parseExcelDate = (value) => {
             normalizedRow[key] !== undefined && normalizedRow[key] !== '' && normalizedRow[key] !== '-') {
           // Make sure it's not the amount column
           if (!key.includes('amount') && !key.includes('_cr')) {
-            console.log(`Found count column for ₹{fieldName}: key="₹{key}", value="₹{normalizedRow[key]}"`);
+            console.log(`Found count column for ${fieldName}: key="${key}", value="${normalizedRow[key]}"`);
             return normalizedRow[key];
           }
         }
@@ -882,7 +900,7 @@ const parseExcelDate = (value) => {
       }
     } catch (err) {
       console.error('Import error:', err);
-      alert(`Import failed: ₹{err.message}`);
+      alert(`Import failed: ${err.message}`);
     } finally {
       setImporting(false);
       fileInputRef.current.value = ''; // Reset file input
@@ -893,7 +911,7 @@ const parseExcelDate = (value) => {
     try {
       // CRITICAL: Fetch existing schemes BEFORE import to check for updates
       console.log('Fetching existing schemes for update check...');
-      const existingResponse = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}`);
+      const existingResponse = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}`);
       const existingSchemes = await existingResponse.json();
       console.log('Existing schemes loaded:', { count: existingSchemes.length, schemes: existingSchemes.map(s => ({ id: s.id, name: s.scheme_name, year: s.financial_year })) });
       
@@ -1172,8 +1190,8 @@ if (
             }
           }
 
-          console.log(`\nΓ£à IMPORT SUMMARY:\n  Successful: ₹{successCount}\n  Failed: ₹{errorCount}\n  Skipped headers: ₹{skippedHeaderRows}\n  Total processed: ₹{jsonData.length}\n`);
-          alert(`Γ£à Import completed!\n\nSuccessful: ₹{successCount}\nFailed: ₹{errorCount}\nSkipped headers: ₹{skippedHeaderRows}\n\nNote: Check console (F12) to see which schemes were UPDATED vs CREATED`);
+          console.log(`\nΓ£à IMPORT SUMMARY:\n  Successful: ${successCount}\n  Failed: ${errorCount}\n  Skipped headers: ${skippedHeaderRows}\n  Total processed: ${jsonData.length}\n`);
+          alert(`Γ£à Import completed!\n\nSuccessful: ${successCount}\nFailed: ${errorCount}\nSkipped headers: ${skippedHeaderRows}\n\nNote: Check console (F12) to see which schemes were UPDATED vs CREATED`);
           await fetchCentralSchemes();
           // Clear existing data and refresh from database
           console.log('Clearing cached data and refreshing from database...');
@@ -1266,39 +1284,38 @@ const handleStateSchemeImport = async (file) => {
           //   continue;
           // }
           // Find first non-empty string cell (scheme name)
-const schemeNameCell = values.find(
-  v => typeof v === 'string' && v.trim().length > 0
-);
+          const schemeNameCell = values.find(
+            v => typeof v === 'string' && v.trim().length > 0
+          );
 
-if (!schemeNameCell) {
-  skipped++;
-  continue;
-}
-
+          if (!schemeNameCell) {
+            skipped++;
+            continue;
+          }
 
           const nameIndex = values.indexOf(schemeNameCell);
 
-const stateSchemeData = {
-  name: values[nameIndex]?.toString().trim(),
-  hod: values[nameIndex + 1]?.toString().trim(),
+          const stateSchemeData = {
+            name: values[nameIndex]?.toString().trim(),
+            hod: values[nameIndex + 1]?.toString().trim(),
 
-  budgetEstimates: parseNumberOrNull(values[nameIndex + 2]),
-  broReleased: parseNumberOrNull(values[nameIndex + 3]),
+            budgetEstimates: parseNumberOrNull(values[nameIndex + 2]),
+            broReleased: parseNumberOrNull(values[nameIndex + 3]),
 
-  billsPreferredNo: parseNumberOrNull(values[nameIndex + 4]),
-  billsPreferredAmount: parseNumberOrNull(values[nameIndex + 5]),
-  billsPreferredOldestDate: parseExcelDate(values[nameIndex + 6]),
+            billsPreferredNo: parseNumberOrNull(values[nameIndex + 4]),
+            billsPreferredAmount: parseNumberOrNull(values[nameIndex + 5]),
+            billsPreferredOldestDate: parseExcelDate(values[nameIndex + 6]),
 
-  billsClearedNo: parseNumberOrNull(values[nameIndex + 7]),
-  billsClearedAmount: parseNumberOrNull(values[nameIndex + 8]),
-  billsClearedLatestDate: parseExcelDate(values[nameIndex + 9]),
+            billsClearedNo: parseNumberOrNull(values[nameIndex + 7]),
+            billsClearedAmount: parseNumberOrNull(values[nameIndex + 8]),
+            billsClearedLatestDate: parseExcelDate(values[nameIndex + 9]),
 
-  pendingNo: parseNumberOrNull(values[nameIndex + 10]),
-  pendingAmount: parseNumberOrNull(values[nameIndex + 11]),
+            pendingNo: parseNumberOrNull(values[nameIndex + 10]),
+            pendingAmount: parseNumberOrNull(values[nameIndex + 11]),
 
-  financial_year: financialYear,
-  status: 'active'
-};
+            financial_year: financialYear,
+            status: 'active'
+          };
 
           if (!stateSchemeData.name || !stateSchemeData.hod) {
             skipped++;
@@ -1328,9 +1345,9 @@ const stateSchemeData = {
 
       alert(
         `Γ£à State Scheme Import Completed\n\n` +
-        `Successful: ₹{successCount}\n` +
-        `Failed: ₹{errorCount}\n` +
-        `Skipped: ₹{skipped}`
+        `Successful: ${successCount}\n` +
+        `Failed: ${errorCount}\n` +
+        `Skipped: ${skipped}`
       );
 
       await fetchStateSchemeData();
@@ -1345,136 +1362,7 @@ const stateSchemeData = {
   reader.readAsArrayBuffer(file);
 };
 
-
-  // const handleStateSchemeImport = async (file) => {
-  //   const reader = new FileReader();
-  //   reader.onload = async (event) => {
-  //     try {
-  //       const data = new Uint8Array(event.target.result);
-  //       const workbook = XLSX.read(data, { type: 'array' });
-  //       const sheetName = workbook.SheetNames[0];
-  //       const worksheet = workbook.Sheets[sheetName];
-  //       const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-  //       console.log('State Scheme Excel loaded', { totalRows: jsonData.length, firstRow: jsonData[0] });
-
-  //       let successCount = 0;
-  //       let errorCount = 0;
-  //       let skippedHeaderRows = 0;
-
-  //       for (const [index, row] of jsonData.entries()) {
-  //         const normalizedRow = normalizeRowKeys(row);
-          
-  //         // Log columns for first row
-  //         if (index === 0) {
-  //           console.log('State Scheme normalized columns:', Object.keys(normalizedRow));
-  //           console.log('State Scheme first row data:', normalizedRow);
-  //           console.log('All normalized row keys:', Object.keys(normalizedRow).map(k => `"₹{k}"`).join(', '));
-  //         }
-          
-  //         try {
-  //           // More flexible column name matching for state schemes
-  //           const schemeName = findColumnValue(normalizedRow, ['state_scheme_name', 'name', 'scheme_name', 'state_scheme']) || '';
-  //           const hod = findColumnValue(normalizedRow, ['hod', 'hod_name', 'ministry']) || '';
-
-  //           // Skip header rows
-  //           const schemeNameLower = (schemeName || '').toString().toLowerCase();
-  //           if ((schemeNameLower.includes('scheme') || schemeNameLower.includes('state')) && 
-  //               (schemeNameLower.includes('name') || schemeNameLower === 'state scheme name')) {
-  //             skippedHeaderRows++;
-  //             console.log('Skipped header row:', { index: index + 1, name: schemeName });
-  //             continue;
-  //           }
-
-  //           // Skip rows where scheme name is just a number or SL. NO
-  //           if (!schemeName || schemeName.toString().trim() === '' || /^\d+₹/.test(schemeName.toString().trim())) {
-  //             skippedHeaderRows++;
-  //             console.log('Skipped row with invalid scheme name:', { index: index + 1, name: schemeName, hod });
-  //             continue;
-  //           }
-
-  //           // Skip rows where HoD is just a number (likely empty or misaligned columns)
-  //           if (!hod || hod.toString().trim() === '' || (/^\d+₹/.test(hod.toString().trim()) && hod.toString().length < 3)) {
-  //             errorCount++;
-  //             console.warn('Skipping row - invalid HoD:', { index: index + 1, name: schemeName, hod });
-  //             continue;
-  //           }
-
-  //           // Simple and direct column value extraction for all fields
-  //           const allKeys = Object.keys(normalizedRow);
-  //           console.log(`Row ₹{index + 1} available columns:`, allKeys);
-            
-  //           const stateSchemeData = {
-  //             name: schemeName,
-  //             hod: hod,
-  //             budgetEstimates: parseNumberOrNull(normalizedRow[allKeys.find(k => k.includes('budget'))]),
-  //             broReleased: parseNumberOrNull(normalizedRow[allKeys.find(k => k.includes('bro'))]),
-  //             billsPreferredNo: parseNumberOrNull(normalizedRow[allKeys.find(k => k.includes('bills_preferred') && k.includes('count') || k.includes('no_of_bills_preferred'))]),
-  //             billsPreferredAmount: parseNumberOrNull(normalizedRow[allKeys.find(k => k.includes('bills_preferred') && k.includes('amount'))]),
-  //             billsPreferredOldestDate: parseExcelDate(normalizedRow[allKeys.find(k => k.includes('oldest'))]),
-  //             billsClearedNo: parseNumberOrNull(normalizedRow[allKeys.find(k => k.includes('bills_cleared') && (k.includes('count') || k.includes('no') && !k.includes('amount')))]),
-  //             billsClearedAmount: parseNumberOrNull(normalizedRow[allKeys.find(k => k.includes('bills_cleared') && k.includes('amount'))]),
-  //             billsClearedLatestDate: parseExcelDate(normalizedRow[allKeys.find(k => k.includes('latest'))]),
-  //             pendingNo: parseNumberOrNull(normalizedRow[allKeys.find(k => k.includes('pending') && (k.includes('count') || k.includes('no') && !k.includes('amount')))]),
-  //             pendingAmount: parseNumberOrNull(normalizedRow[allKeys.find(k => k.includes('pending') && k.includes('amount'))]),
-  //             financial_year: financialYear,
-  //             status: 'active'
-  //           };
-
-  //           console.log('State Scheme row processed', {
-  //             index: index + 1,
-  //             name: stateSchemeData.name,
-  //             hod: stateSchemeData.hod,
-  //             budgetEstimates: stateSchemeData.budgetEstimates,
-  //             broReleased: stateSchemeData.broReleased,
-  //             billsPreferredNo: stateSchemeData.billsPreferredNo,
-  //             billsPreferredAmount: stateSchemeData.billsPreferredAmount,
-  //             billsClearedNo: stateSchemeData.billsClearedNo,
-  //             billsClearedAmount: stateSchemeData.billsClearedAmount,
-  //             pendingNo: stateSchemeData.pendingNo,
-  //             pendingAmount: stateSchemeData.pendingAmount
-  //           });
-
-  //           if (stateSchemeData.name && stateSchemeData.hod) {
-  //             const response = await fetch('http://localhost:5000/api/schemes/state-schemes', {
-  //               method: 'POST',
-  //               headers: { 'Content-Type': 'application/json' },
-  //               body: JSON.stringify(stateSchemeData)
-  //             });
-              
-  //             if (response.ok) {
-  //               successCount++;
-  //               console.log('Γ£à State scheme row imported:', { index: index + 1, name: stateSchemeData.name, data: stateSchemeData });
-  //             } else {
-  //               errorCount++;
-  //               const errorData = await response.json();
-  //               console.error('Failed to import state scheme row', { index: index + 1, name: stateSchemeData.name, error: errorData, sent: stateSchemeData });
-  //             }
-  //           } else {
-  //             errorCount++;
-  //             console.warn('Skipping state scheme row - missing required fields', { index: index + 1, name: schemeName, hod });
-  //           }
-  //         } catch (err) {
-  //           errorCount++;
-  //           console.error('Error importing state scheme row', { index: index + 1, error: err.message, row: normalizedRow });
-  //         }
-  //       }
-
-  //       console.log(`State Scheme Import Summary: Successful: ₹{successCount}, Failed: ₹{errorCount}, Skipped headers: ₹{skippedHeaderRows}`);
-  //       alert(`Γ£à State Scheme Import completed!\n\nSuccessful: ₹{successCount}\nFailed: ₹{errorCount}\nSkipped headers: ₹{skippedHeaderRows}`);
-        
-  //       // Refresh state scheme data
-  //       await fetchStateSchemeData();
-  //     } catch (err) {
-  //       console.error('Error parsing Excel:', err);
-  //       alert('Failed to parse Excel file.');
-  //     }
-  //     setImporting(false);
-  //   };
-  //   reader.readAsArrayBuffer(file);
-  // };
-
-  const handleRevenueImport = async (file) => {
+const handleRevenueImport = async (file) => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -1537,20 +1425,13 @@ const stateSchemeData = {
 
         await fetchRevenueData();
 
-alert(
-  `Γ£à Import completed!\n\n` +
-  `Successful: ₹{successCount}\n` +
-  `Failed: ₹{errorCount}\n` +
-  `Skipped headers: ₹{skippedHeaderRows}\n\n` +
-  `Note: Check console (F12) to see which schemes were UPDATED vs CREATED`
-);
-
-// Γ£à REFRESH UI FROM DATABASE (PASTE HERE)
-await fetchRevenueData();
-
-
-
-
+        alert(
+          `Γ£à Import completed!\n\n` +
+          `Successful: ${successCount}\n` +
+          `Failed: ${errorCount}\n` +
+          `Skipped headers: ${skippedHeaderRows}\n\n` +
+          `Note: Check console (F12) to see which schemes were UPDATED vs CREATED`
+        );
 
         // Refresh revenue data
         await fetchRevenueData();
@@ -1570,28 +1451,53 @@ await fetchRevenueData();
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yy = String(d.getFullYear()).slice(-2);
-  return `₹{dd}-₹{mm}-₹{yy}`; // EXACT like your Excel
+  return `${dd}-${mm}-${yy}`; // EXACT like your Excel
 };
 
 
 
   const handleExcelExport = async () => {
-  let templatePath = '';
-  let startRow = 3; // DATA starts AFTER headers
+  let headers = [];
   let dataRows = [];
+  let filename = '';
 
   /* ===============================
-     1∩╕ÅΓâú Decide template + data
+     Decide headers + data
      =============================== */
 
   if (filterType === 'central-sponsored-scheme') {
-    templatePath = '/excel-templates/central-scheme-template.xlsx';
+    headers = [
+      'Sl No',
+      'Central Scheme Name',
+      'Scheme',
+      'HOD',
+      'Financial Year',
+      'Allocation GOI Share (Cr)',
+      'Allocation State Share (Cr)',
+      'Allocation Total (Cr)',
+      'SLSC GOI Share (Cr)',
+      'SLSC State Share (Cr)',
+      'SLSC Total (Cr)',
+      'Sanction GOI Share (Cr)',
+      'Sanction State Share (Cr)',
+      'Sanction Total (Cr)',
+      'BRO Released (Cr)',
+      'DT Authorized (Cr)',
+      'Bills Preferred Count',
+      'Bills Preferred Amount (Cr)',
+      'Oldest Bill Date',
+      'Bills Cleared Count',
+      'Bills Cleared Amount (Cr)',
+      'Latest Bill Date',
+      'Remark'
+    ];
 
     dataRows = financialRows.map((r, i) => [
       i + 1,
       r.central_scheme_name || '',
       r.scheme_name || '',
       r.hod || '',
+      r.financial_year || financialYear,
       r.allocation_goi_share ?? '',
       r.allocation_state_share ?? '',
       r.allocation_total ?? '',
@@ -1611,12 +1517,28 @@ await fetchRevenueData();
       excelDate(r.latest_bill_date),
       r.remark || ''
     ]);
+    filename = `central-sponsored-scheme_${financialYear}.xlsx`;
   }
 
   else if (filterType === 'state-scheme') {
-    templatePath = '/excel-templates/state-scheme-template.xlsx';
+    headers = [
+      'Sl No',
+      'Scheme Name',
+      'HOD',
+      'Budget Estimates (Cr)',
+      'BRO Released (Cr)',
+      'Bills Preferred - Count',
+      'Bills Preferred - Amount (Cr)',
+      'Bills Preferred - Oldest Date',
+      'Bills Cleared - Count',
+      'Bills Cleared - Amount (Cr)',
+      'Bills Cleared - Latest Date',
+      'Pending Bills - Count',
+      'Pending Bills - Amount (Cr)'
+    ];
 
-    dataRows = stateSchemeData.map(r => [
+    dataRows = stateSchemeData.map((r, i) => [
+      i + 1,
       r.name || '',
       r.hod || '',
       r.budgetEstimates ?? '',
@@ -1630,11 +1552,16 @@ await fetchRevenueData();
       r.pendingNo ?? '',
       r.pendingAmount ?? ''
     ]);
+    filename = `state-scheme_${financialYear}.xlsx`;
   }
 
   else if (filterType === 'revenue') {
-    templatePath = '/excel-templates/revenue-template.xlsx';
-    startRow = 2;
+    headers = [
+      'Sl No',
+      'Cooperative Name',
+      'Loans (Cr)',
+      'Revenue (Cr)'
+    ];
 
     dataRows = revenueData.map((r, i) => [
       i + 1,
@@ -1642,36 +1569,30 @@ await fetchRevenueData();
       r.loans ?? '',
       r.revenue ?? ''
     ]);
+    filename = `revenue_${financialYear}.xlsx`;
   }
 
-  if (!templatePath) return;
+  if (headers.length === 0) return;
 
   /* ===============================
-     2∩╕ÅΓâú LOAD TEMPLATE EXCEL
+     Create workbook from scratch
      =============================== */
 
-  const response = await fetch(templatePath);
-  const arrayBuffer = await response.arrayBuffer();
+  const ws_data = [headers, ...dataRows];
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  
+  // Set column widths
+  const colWidths = headers.map(() => 15);
+  ws['!cols'] = colWidths.map(w => ({ wch: w }));
 
-  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, ws, 'Data');
 
   /* ===============================
-     3∩╕ÅΓâú ≡ƒöÑ THIS IS WHERE YOU ADD IT
+     Download Excel
      =============================== */
 
-  XLSX.utils.sheet_add_aoa(
-    worksheet,
-    dataRows,
-    { origin: `A₹{startRow}` } // ≡ƒæê IMPORTANT
-  );
-
-  /* ===============================
-     4∩╕ÅΓâú DOWNLOAD SAME EXCEL
-     =============================== */
-
-  XLSX.writeFile(workbook, `₹{filterType}_₹{financialYear}.xlsx`);
+  XLSX.writeFile(workbook, filename);
 };
 
 
@@ -1710,14 +1631,14 @@ await fetchRevenueData();
       <div className="table-card" style={{ marginTop: '24px', width: '100%' }}>
         <div className="table-header">
           <h3>
-            {filterType === 'central-sponsored-scheme' && `Financial Progress Report (CSS) ₹{financialYear}`}
+            {filterType === 'central-sponsored-scheme' && `Financial Progress Report (CSS) ${financialYear}`}
             {filterType === 'state-scheme' && 'State Scheme'}
             {filterType === 'revenue' && 'Revenue'}
           </h3>
           <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-            {filterType === 'central-sponsored-scheme' && `Loaded: ₹{financialRows.length} records`}
-            {filterType === 'state-scheme' && `Loaded: ₹{stateSchemeData.length} records`}
-            {filterType === 'revenue' && `Loaded: ₹{revenueData.length} records`}
+            {filterType === 'central-sponsored-scheme' && `Loaded: ${financialRows.length} records`}
+            {filterType === 'state-scheme' && `Loaded: ${stateSchemeData.length} records`}
+            {filterType === 'revenue' && `Loaded: ${revenueData.length} records`}
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <select 
@@ -1761,8 +1682,13 @@ await fetchRevenueData();
                   <FiUpload /> Export Excel
                 </button>
                 <select value={financialYear} onChange={(e) => setFinancialYear(e.target.value)}>
-                  <option value="2025-26">2025-26</option>
-                  <option value="2024-25">2024-25</option>
+                  {availableYears.length > 0 ? (
+                    availableYears.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))
+                  ) : (
+                    <option value="2025-26">2025-26</option>
+                  )}
                 </select>
               </>
             )}
@@ -1791,8 +1717,13 @@ await fetchRevenueData();
                   <FiUpload /> Export Excel
                 </button>
                 <select value={financialYear} onChange={(e) => setFinancialYear(e.target.value)}>
-                  <option value="2025-26">2025-26</option>
-                  <option value="2024-25">2024-25</option>
+                  {availableYears.length > 0 ? (
+                    availableYears.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))
+                  ) : (
+                    <option value="2025-26">2025-26</option>
+                  )}
                 </select>
               </>
             )}
@@ -1821,8 +1752,13 @@ await fetchRevenueData();
                   <FiUpload /> Export Excel
                 </button>
                 <select value={financialYear} onChange={(e) => setFinancialYear(e.target.value)}>
-                  <option value="2025-26">2025-26</option>
-                  <option value="2024-25">2024-25</option>
+                  {availableYears.length > 0 ? (
+                    availableYears.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))
+                  ) : (
+                    <option value="2025-26">2025-26</option>
+                  )}
                 </select>
               </>
             )}
@@ -1841,6 +1777,7 @@ await fetchRevenueData();
                   <th rowSpan="2" style={{ border: '1px solid #d0d7de', padding: '8px', background: '#f6f8fa' }}>Central Scheme Name</th>
                   <th rowSpan="2" style={{ border: '1px solid #d0d7de', padding: '8px', background: '#f6f8fa' }}>Scheme</th>
                   <th rowSpan="2" style={{ border: '1px solid #d0d7de', padding: '8px', background: '#f6f8fa' }}>HOD</th>
+                  <th rowSpan="2" style={{ border: '1px solid #d0d7de', padding: '8px', background: '#f6f8fa' }}>Financial Year</th>
                   <th colSpan="3" style={{ border: '1px solid #d0d7de', padding: '8px', background: '#f6f8fa' }}>Allocation of GOI 2025-26 (Cr)</th>
                   <th colSpan="3" style={{ border: '1px solid #d0d7de', padding: '8px', background: '#f6f8fa' }}>SLSC Approved AAP (Cr)</th>
                   <th colSpan="3" style={{ border: '1px solid #d0d7de', padding: '8px', background: '#f6f8fa' }}>Mother Sanction 2025-26 (50% of allocation) (Cr)</th>
@@ -1898,6 +1835,7 @@ await fetchRevenueData();
                         <td style={{ border: '1px solid #d0d7de', padding: '8px' }}>{centralSchemeName}</td>
                         <td style={{ border: '1px solid #d0d7de', padding: '8px' }}>{row.scheme_name}</td>
                         <td style={{ border: '1px solid #d0d7de', padding: '8px' }}>{row.hod}</td>
+                        <td style={{ border: '1px solid #d0d7de', padding: '8px' }}>{row.financial_year || financialYear}</td>
                         <td style={{ border: '1px solid #d0d7de', padding: '8px' }}>{allocationGoi !== undefined && allocationGoi !== null ? formatNumber(allocationGoi) : '-'}</td>
                         <td style={{ border: '1px solid #d0d7de', padding: '8px' }}>{allocationState !== undefined && allocationState !== null ? formatNumber(allocationState) : '-'}</td>
                         <td style={{ border: '1px solid #d0d7de', padding: '8px' }}>{row.allocation_total !== undefined && row.allocation_total !== null ? formatNumber(row.allocation_total) : '-'}</td>

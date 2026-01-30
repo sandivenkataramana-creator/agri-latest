@@ -6,9 +6,12 @@ const DAO = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ name: '', department: '', email: '', phone: '', status: 'active' });
+  const [formData, setFormData] = useState({ employee_name: '', district_name: '', division_name: '', mandal_name: '', cadre: '', regular_incharge: '', present_cadre: '', email: '', office_mobile_no: '', present_office: '', status: 'active' });
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const pageSize = 50;
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isSuperAdmin = user.role === 'superadmin';
   const isReadOnly = !isSuperAdmin;
@@ -45,10 +48,23 @@ const DAO = () => {
   const handleOpenModal = (dao = null) => {
     if (isReadOnly) return;
     if (dao) {
-      setFormData(dao);
+      setFormData({
+        employee_name: dao.employee_name || '',
+        district_name: dao.district_name || '',
+        division_name: dao.division_name || '',
+        mandal_name: dao.mandal_name || '',
+        cadre: dao.cadre || '',
+        regular_incharge: dao.regular_incharge || '',
+        present_cadre: dao.present_cadre || '',
+        email: dao.email || '',
+        office_mobile_no: dao.office_mobile_no || '',
+        present_office: dao.present_office || '',
+        status: dao.status || 'active'
+      });
+
       setEditingId(dao.id);
     } else {
-      setFormData({ name: '', department: '', email: '', phone: '', status: 'active' });
+      setFormData({ employee_name: '', district_name: '', division_name: '', mandal_name: '', cadre: '', regular_incharge: '', present_cadre: '', email: '', office_mobile_no: '', present_office: '', status: 'active' });
       setEditingId(null);
     }
     setShowModal(true);
@@ -56,7 +72,7 @@ const DAO = () => {
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setFormData({ name: '', department: '', email: '', phone: '', status: 'active' });
+    setFormData({ employee_name: '', district_name: '', division_name: '', mandal_name: '', cadre: '', regular_incharge: '', present_cadre: '', email: '', office_mobile_no: '', present_office: '', status: 'active' });
     setEditingId(null);
   };
 
@@ -119,11 +135,24 @@ const DAO = () => {
     }
   };
 
+  const term = searchTerm.toLowerCase();
+
   const filteredDAOs = daos.filter(dao =>
-    dao.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dao.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dao.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (dao.employee_name || '').toLowerCase().includes(term) ||
+    (dao.district_name || '').toLowerCase().includes(term) ||
+    (dao.division_name || '').toLowerCase().includes(term) ||
+    (dao.mandal_name || '').toLowerCase().includes(term) ||
+    (dao.cadre || '').toLowerCase().includes(term) ||
+    (dao.regular_incharge || '').toLowerCase().includes(term) ||
+    (dao.present_cadre || '').toLowerCase().includes(term) ||
+    (dao.present_office || '').toLowerCase().includes(term) ||
+    (dao.email || '').toLowerCase().includes(term) ||
+    (dao.office_mobile_no || '').toLowerCase().includes(term)
   );
+   // pagination helpers
+  const startIndex = currentPage * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedDAOs = filteredDAOs.slice(startIndex, endIndex);
 
   if (loading) {
     return (
@@ -190,23 +219,36 @@ const DAO = () => {
             <thead>
               <tr>
                 <th>SNO</th>
-                <th>Name</th>
-                <th>Department</th>
+                <th>Employee_Name</th>
+                <th>District_Name</th>
+                <th>Division_Name</th>
+                <th>Mandal_Name</th>
+                <th>Cadre</th>
+                <th>Regular_Incharge</th>
+                <th>Present_Cadre</th>
                 <th>Email</th>
-                <th>Phone</th>
+                <th>Office_MobileNo</th>
+                <th>Present_Office</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
+
               {filteredDAOs.length > 0 ? (
-                filteredDAOs.map((dao, index) => (
+                paginatedDAOs.map((dao, index) => (
                   <tr key={dao.id}>
-                    <td><strong>{index + 1}</strong></td>
-                    <td>{dao.name}</td>
-                    <td>{dao.department}</td>
-                    <td>{dao.email}</td>
-                    <td>{dao.phone}</td>
+                    <td><strong>{startIndex + index + 1}</strong></td>
+                    <td>{dao.employee_name || '-'}</td>
+                    <td>{dao.district_name || '-'}</td>
+                    <td>{dao.division_name || '-'}</td>
+                    <td>{dao.mandal_name || '-'}</td>
+                    <td>{dao.cadre || '-'}</td>
+                    <td>{dao.regular_incharge || '-'}</td>
+                    <td>{dao.present_cadre || '-'}</td>
+                    <td>{dao.email || '-'}</td>
+                    <td>{dao.office_mobile_no || '-'}</td>
+                    <td>{dao.present_office || '-'}</td>
                     <td>
                       <span className={`status-badge ${dao.status}`}>
                         {dao.status.charAt(0).toUpperCase() + dao.status.slice(1)}
@@ -256,6 +298,28 @@ const DAO = () => {
             </tbody>
           </table>
         </div>
+        <div className="pagination" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', borderTop: '1px solid #e0e0e0' }}>
+          <span style={{ fontSize: '14px', color: '#666' }}>
+            {filteredDAOs.length === 0
+              ? '0-0 of 0'
+              : `${startIndex + 1}-${Math.min(endIndex, filteredDAOs.length)} of ${filteredDAOs.length}`}
+          </span>
+
+          <button
+            disabled={currentPage === 0}
+            onClick={() => setCurrentPage(p => p - 1)}
+          >
+            &lt;
+          </button>
+
+          <button
+            disabled={endIndex >= filteredDAOs.length}
+            onClick={() => setCurrentPage(p => p + 1)}
+          >
+            &gt;
+          </button>
+
+        </div>
       </div>
 
       {/* Modal */}
@@ -278,18 +342,21 @@ const DAO = () => {
             borderRadius: '12px',
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
             maxWidth: '500px',
-            width: '90%'
+            width: '90%',
+            maxHeight: '80vh',          // ⭐ KEY
+            overflowY: 'auto'           // ⭐ KEY
           }}>
+
             <h3 style={{ marginBottom: '20px' }}>
               {editingId ? 'Edit DAO' : 'Add New DAO'}
             </h3>
             <form style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Name</label>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Employee_Name</label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="employee_name"
+                  value={formData.employee_name || ''}
                   onChange={handleInputChange}
                   placeholder="Enter DAO name"
                   style={{
@@ -302,13 +369,98 @@ const DAO = () => {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Department</label>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>District_Name</label>
                 <input
                   type="text"
-                  name="department"
-                  value={formData.department}
+                  name="district_name"
+                  value={formData.district_name || ''}
                   onChange={handleInputChange}
-                  placeholder="Enter department"
+                  placeholder="Enter district name"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Division_Name</label>
+                <input
+                  type="text"
+                  name="division_name"
+                  value={formData.division_name || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter division name"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Mandal_Name</label>
+                <input
+                  type="text"
+                  name="mandal_name"
+                  value={formData.mandal_name || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter mandal name"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Cadre</label>
+                <input
+                  type="text"
+                  name="cadre"
+                  value={formData.cadre || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter cadre"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Regular_Incharge</label>
+                <input
+                  type="text"
+                  name="regular_incharge"
+                  value={formData.regular_incharge || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter regular incharge"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Present_Cadre</label>
+                <input
+                  type="text"
+                  name="present_cadre"
+                  value={formData.present_cadre || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter present cadre"
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -323,7 +475,7 @@ const DAO = () => {
                 <input
                   type="email"
                   name="email"
-                  value={formData.email}
+                  value={formData.email || ''}
                   onChange={handleInputChange}
                   placeholder="Enter email"
                   style={{
@@ -339,10 +491,27 @@ const DAO = () => {
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Phone</label>
                 <input
                   type="tel"
-                  name="phone"
-                  value={formData.phone}
+                  name="office_mobile_no"
+                  value={formData.office_mobile_no || ''}
                   onChange={handleInputChange}
                   placeholder="Enter phone"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Present_Office</label>
+                <input
+                  type="text"
+                  name="present_office"
+                  value={formData.present_office || ''}
+                  onChange={handleInputChange}
+                  placeholder="Enter pre office"
                   style={{
                     width: '100%',
                     padding: '10px',
@@ -356,7 +525,7 @@ const DAO = () => {
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Status</label>
                 <select
                   name="status"
-                  value={formData.status}
+                  value={formData.status || 'active'}
                   onChange={handleInputChange}
                   style={{
                     width: '100%',
