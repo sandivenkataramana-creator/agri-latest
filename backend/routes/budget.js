@@ -9,8 +9,10 @@ const superAdminOnly = [authenticateJWT, requireRole('superadmin')];
 router.get('/', async (req, res) => {
   try {
     let results;
+    const hodId = req.query.hodId;
+    
     try {
-      [results] = await db.query(`
+      let query = `
         SELECT b.*, h.name as hod_name, h.department as department, s.scheme_name as scheme_name, st.name as state_name, d.name as district_name, m.name as mandal_name, da.name as dao_name
         FROM budget b
         LEFT JOIN hods h ON b.hod_id = h.id
@@ -19,8 +21,18 @@ router.get('/', async (req, res) => {
         LEFT JOIN states st ON b.state_id = st.id
         LEFT JOIN districts d ON b.district_id = d.id
         LEFT JOIN mandals m ON b.mandal_id = m.id
-        ORDER BY b.financial_year DESC
-      `);
+      `;
+      
+      const params = [];
+      
+      if (hodId) {
+        query += ` WHERE b.hod_id = ?`;
+        params.push(hodId);
+      }
+      
+      query += ` ORDER BY b.financial_year DESC`;
+      
+      [results] = await db.query(query, params);
     } catch (err) {
       console.error('Error fetching budget:', err);
       throw err;

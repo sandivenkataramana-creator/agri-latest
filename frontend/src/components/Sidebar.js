@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   FiHome, 
   FiUsers, 
   FiFileText, 
+  FiTrash2 ,
   FiDollarSign, 
   FiTarget, 
   FiUserCheck,
@@ -14,7 +15,10 @@ import {
   FiChevronRight,
   FiUserPlus,
   FiBell,
-  FiMail
+  FiMail,
+  FiUpload,
+  FiDownload,
+  FiChevronDown
 } from 'react-icons/fi';
 
 const Sidebar = ({ isCollapsed, onToggle }) => {
@@ -23,7 +27,17 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
   const isAdmin = role === 'admin';
   const isSuperAdmin = role === 'superadmin';
   const isAdminLike = isAdmin || isSuperAdmin;
+  const isHOD = role === 'hod';
   const [query, setQuery] = useState('');
+  const location = useLocation();
+  const [expandedItems, setExpandedItems] = useState({});
+
+  const toggleExpanded = (key) => {
+    setExpandedItems(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
 
   // Menu items based on role
   const getMainMenuItems = () => {
@@ -35,24 +49,47 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
       return [
         ...baseItems,
         { path: '/beneficiaries', icon: <FiUsers />, label: 'Beneficiaries' },
-        // { path: '/hods', icon: <FiUsers />, label: 'HODs' },
-        // { path: '/dao', icon: <FiUsers />, label: 'DAO' },
         { path: '/employees', icon: <FiUsers />, label: 'Employees' },
         { path: '/schemes', icon: <FiFileText />, label: 'Schemes' },
-        { path: '/flagship-programmes', icon: <FiFileText />, label: 'Flagship Programs & Reports' },
-        // { path: '/staff', icon: <FiUserCheck />, label: 'Staff' },
+           {
+          icon: <FiFileText  />,
+          label: 'Flagship Programs & Reports',
+          key: 'flagship_reports',
+          subItems: [
+            { path: '/uploaded-files', label: 'Uploaded Files' },
+            { path: '/deletion-logs', label: 'Deletion Logs' }
+          ]
+        },
+        // { path: '/flagship-programmes', icon: <FiFileText />, label: 'Flagship Programs & Reports' },
         { path: '/budget', icon: <FiDollarSign />, label: 'Budget' },
-        // { path: '/attendance', icon: <FiCalendar />, label: 'Attendance' },
-        
       ];
-    } else if (role === 'hod') {
+    } else if (isHOD) {
       return [
         ...baseItems,
         { path: '/beneficiaries', icon: <FiUsers />, label: 'Beneficiaries' },
         { path: '/schemes', icon: <FiFileText />, label: 'My Schemes' },
-        // { path: '/staff', icon: <FiUserCheck />, label: 'My Staff' },
-        // { path: '/attendance', icon: <FiCalendar />, label: 'Attendance' },
-        { path: '/employees', icon: <FiUserCheck />, label: 'Employees' },
+        {
+          icon: <FiUserCheck />,
+          label: 'Employees',
+          key: 'employees',
+          subItems: [
+            { path: '/dao', label: 'DAO' },
+            { path: '/attendance', label: 'Attendance' }
+          ]
+        },
+        //  { path: '/uploaded-files', icon: <FiUpload />, label: 'Uploaded Files' },
+        // { path: '/deletion-logs', icon: <FiFileText />, label: 'Deletion Logs' },
+      
+        {
+          icon: <FiUpload />,
+          label: 'Upload',
+          key: 'upload',
+          subItems: [
+            { path: '/flagship-programmes', label: 'Flagship Programs' },
+            { path: '/reports', label: 'Reports' }
+          ]
+        },
+        { path: '/budget', icon: <FiDollarSign />, label: 'Budget' },
       ];
     } else {
       return [
@@ -67,6 +104,8 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
       const items = [
         { path: '/kpis', icon: <FiTarget />, label: 'KPIs' },
         { path: '/nodal-officers', icon: <FiClipboard />, label: 'Nodal Officers' },
+        { path: '/uploaded-files', icon: <FiUpload />, label: 'Uploaded Files' },
+        { path: '/deletion-logs', icon: <FiFileText />, label: 'Deletion Logs' },
       ];
 
       if (isSuperAdmin) {
@@ -119,17 +158,57 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
           </div>
         )}
         {!isCollapsed && <div className="nav-section">Main Menu</div>}
-        {filteredMain.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-            title={isCollapsed ? item.label : ''}
-          >
-            {item.icon}
-            {!isCollapsed && <span>{item.label}</span>}
-          </NavLink>
-        ))}
+        {filteredMain.map((item) => {
+          const itemKey = item.key || item.path || item.label;
+          const isExpanded = expandedItems[itemKey];
+          const isItemActive = item.path ? location.pathname === item.path : false;
+          
+          if (item.subItems) {
+            return (
+              <div key={itemKey}>
+                <button
+                  className={`nav-item nav-item-expandable ${isExpanded ? 'expanded' : ''} ${item.subItems.some(sub => location.pathname === sub.path) ? 'active' : ''}`}
+                  onClick={() => toggleExpanded(item.key)}
+                  title={isCollapsed ? item.label : ''}
+                >
+                  {item.icon}
+                  {!isCollapsed && (
+                    <>
+                      <span>{item.label}</span>
+                      <FiChevronDown className="chevron-icon" />
+                    </>
+                  )}
+                </button>
+                {!isCollapsed && isExpanded && (
+                  <div className="nav-sub-items">
+                    {item.subItems.map((subItem) => (
+                      <NavLink
+                        key={subItem.path || subItem.label}
+                        to={subItem.path}
+                        className={({ isActive }) => `nav-sub-item ${isActive ? 'active' : ''}`}
+                      >
+                        {subItem.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <NavLink
+              key={item.path || item.label}
+              to={item.path}
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              title={isCollapsed ? item.label : ''}
+            >
+              {item.icon}
+              {!isCollapsed && <span>{item.label}</span>}
+            </NavLink>
+          );
+        })}
+        
         
         {filteredMonitoring.length > 0 && (
           <>

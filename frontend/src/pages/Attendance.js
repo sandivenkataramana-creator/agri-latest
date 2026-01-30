@@ -41,6 +41,10 @@ ChartJS.register(
 const Attendance = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isHOD = user.role === 'hod';
+  const userHodId = user.hod_id;
+  
   // Data states
   const [attendance, setAttendance] = useState([]);
   const [statistics, setStatistics] = useState(null);
@@ -64,7 +68,7 @@ const Attendance = () => {
   const [filters, setFilters] = useState({
     period: searchParams.get('period') || 'today',
     status: searchParams.get('status') || 'all',
-    hod_id: searchParams.get('hod_id') || '',
+    hod_id: isHOD ? userHodId : (searchParams.get('hod_id') || ''),
     department: searchParams.get('department') || '',
     employee_type: searchParams.get('employee_type') || 'all',
     start_date: searchParams.get('start_date') || '',
@@ -76,14 +80,13 @@ const Attendance = () => {
   
   const [formData, setFormData] = useState({
     staff_id: '',
-    hod_id: '',
+    hod_id: isHOD ? userHodId : '',
     date: new Date().toISOString().split('T')[0],
     status: 'present',
     check_in: '',
     check_out: '',
     remarks: ''
   });
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isSuperAdmin = user.role === 'superadmin';
   const isReadOnly = !isSuperAdmin;
 

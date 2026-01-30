@@ -47,12 +47,31 @@ router.get('/', async (req, res) => {
 // Get consolidated financial progress (CSS report style)
 router.get('/financial-progress', async (req, res) => {
   try {
-    const year = req.query.year || '2025-26';
+    let year = req.query.year || '2025-26';
+    const hodId = req.query.hodId ? Number(req.query.hodId) : null;
+    
+    // Normalize year format - accept both "2025-26" and "2025-2026"
+    if (year.match(/\d{4}-\d{2}$/)) {
+      // Already in format 2025-26
+    } else if (year.match(/\d{4}-\d{4}$/)) {
+      // Convert 2025-2026 to 2025-26
+      year = year.split('-')[0] + '-' + year.split('-')[1].substring(2);
+    }
     
     // Prevent caching
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    
+    // Build WHERE clause - try to match year in multiple formats
+    const year4digit = year.split('-')[0];
+    let whereClause = 'WHERE (financial_year = ? OR financial_year LIKE ?) AND status IN ("active", "ACTIVE")';
+    const params = [year, `${year4digit}%`];
+    
+    if (hodId) {
+      whereClause += ' AND hod_id = ?';
+      params.push(hodId);
+    }
     
     // Try primary query first (with all financial columns)
     try {
@@ -62,6 +81,7 @@ router.get('/financial-progress', async (req, res) => {
            scheme_name,
            COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
            hod,
+           hod_id,
            financial_year,
            COALESCE(allocation_goi_share, 0) AS allocation_goi_share,
            COALESCE(allocation_state_share, 0) AS allocation_state_share,
@@ -82,12 +102,12 @@ router.get('/financial-progress', async (req, res) => {
            latest_bill_date,
            remark
          FROM schemes
-         WHERE financial_year = ? AND status IN ('active', 'ACTIVE')
+         ${whereClause}
          ORDER BY scheme_name;
         `,
-        [year]
+        params
       );
-      console.log('Financial-progress query result:', { year, count: results.length, firstItem: results[0] });
+      console.log('Financial-progress query result:', { year, hodId, count: results.length, firstItem: results[0] });
       return res.json(results);
     } catch (innerErr) {
       console.warn('Primary financial-progress query failed, attempting fallback:', innerErr.message);
@@ -98,6 +118,7 @@ router.get('/financial-progress', async (req, res) => {
            scheme_name,
            COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
            hod,
+           hod_id,
            financial_year,
            0 AS allocation_goi_share,
            0 AS allocation_state_share,
@@ -118,12 +139,12 @@ router.get('/financial-progress', async (req, res) => {
            NULL AS latest_bill_date,
            NULL AS remark
          FROM schemes
-         WHERE financial_year = ? AND status IN ('active', 'ACTIVE')
+         ${whereClause}
          ORDER BY scheme_name;
         `,
-        [year]
+        params
       );
-      console.log('Fallback financial-progress query result:', { year, count: fallbackResults.length });
+      console.log('Fallback financial-progress query result:', { year, hodId, count: fallbackResults.length });
       return res.json(fallbackResults);
     }
   } catch (error) {

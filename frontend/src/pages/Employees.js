@@ -6,15 +6,24 @@ import Attendance from './Attendance';
 import './Employees.css';
 
 const Employees = () => {
-  const [activeTab, setActiveTab] = useState('hods');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isHOD = user.role === 'hod';
+  
+  const [activeTab, setActiveTab] = useState(isHOD ? 'dao' : 'hods');
 
-  const tabs = [
+  const adminTabs = [
     { id: 'hods', label: 'HODs', component: HODs },
     { id: 'dao', label: 'DAO', component: DAO },
     { id: 'staff', label: 'Staff', component: Staff },
     { id: 'attendance', label: 'Attendance', component: Attendance },
   ];
 
+  const hodTabs = [
+    { id: 'dao', label: 'DAO', component: DAO },
+    { id: 'attendance', label: 'Attendance', component: Attendance },
+  ];
+
+  const tabs = isHOD ? hodTabs : adminTabs;
   const ActiveComponent = tabs.find(tab => tab.id === activeTab)?.component;
 
   return (

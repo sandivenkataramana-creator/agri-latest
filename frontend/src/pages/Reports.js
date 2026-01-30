@@ -1,72 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Header from '../components/Header';
-import { FiDownload, FiUpload, FiRefreshCw, FiTrash2, FiFileText, FiList, FiGrid, FiEye } from 'react-icons/fi';
-import {
-  uploadFlagshipData,
-  getImportHistory,
-  deleteFlagshipProgramme,
-  exportFlagshipProgrammesCSV
-} from '../services/api';
-import * as XLSX from 'xlsx';
-import api from '../services/api';
+import { FiUpload, FiDownload, FiTrash2, FiEye, FiGrid, FiList } from 'react-icons/fi';
+import './Reports.css';
 
-const FlagshipProgrammes = () => {
+const Reports = () => {
   const fileInputRef = useRef(null);
-  const [flagshipUploads, setFlagshipUploads] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [viewFormat, setViewFormat] = useState('cards'); // 'cards' or 'list'
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('programmes'); // 'programmes' or 'reports'
-  const [importHistory, setImportHistory] = useState([]);
-  const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [fileData, setFileData] = useState(null);
-  const [importType, setImportType] = useState('programme');
-  const [departmentInput, setDepartmentInput] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [selectedExportFormat, setSelectedExportFormat] = useState('csv');
+  const [selectedFormat, setSelectedFormat] = useState('pdf');
+  const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [selectedReportToDelete, setSelectedReportToDelete] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [showExportOptions, setShowExportOptions] = useState(false);
-  const pageSize = 10;
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isSuperAdmin = user.role === 'superadmin';
   const isHOD = user.role === 'hod';
   const userHodId = user.hod_id;
 
-  // Fetch programmes on mount and when filters change
   useEffect(() => {
-    fetchFlagshipUploads();
-  }, [selectedDepartment]);
+    if (isHOD) {
+      fetchReports();
+    }
+  }, [isHOD, userHodId]);
 
-  const fetchFlagshipUploads = async () => {
+  const fetchReports = async () => {
     try {
       setLoading(true);
-      // Use uploads API for all flagship uploads
-      const token = JSON.parse(localStorage.getItem('user') || '{}').token;
-      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/flagship-programs`;
-      if (!isHOD && selectedDepartment) {
-        url += `?department=${encodeURIComponent(selectedDepartment)}`;
-      }
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await fetch(`http://localhost:5000/api/uploads/reports?hodId=${userHodId}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
       });
-      const data = await res.json();
-      setFlagshipUploads(Array.isArray(data) ? data : []);
-      if (isSuperAdmin) fetchImportHistory();
-    } catch (error) {
-      console.error('Error fetching flagship uploads:', error);
+      if (response.ok) {
+        const data = await response.json();
+        setReports(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Error fetching reports:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchImportHistory = async () => {
-    try {
-      const response = await getImportHistory();
-      setImportHistory(response.data || []);
-    } catch (error) {
-      console.error('Error fetching import history:', error);
     }
   };
 
@@ -76,170 +49,186 @@ const FlagshipProgrammes = () => {
     }
   };
 
-  const handleFileUpload = async () => {
-    if (!uploadedFile) return;
-
-    try {
-      setUploading(true);
-
-      // If HOD: send raw file to uploads endpoint (accept any file type)
-      if (isHOD) {
-        try {
-          const formData = new FormData();
-          formData.append('file', uploadedFile);
-          formData.append('fileFormat', (uploadedFile.name.split('.').pop() || '').toLowerCase());
-          // mark this upload as a flagship_program when uploading from this page
-          formData.append('upload_type', 'flagship_program');
-
-          // Use axios instance with correct baseURL and auth interceptor
-          const res = await api.post('/uploads/flagship-program', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
-
-          if (res && res.data) {
-            alert(res.data.message || 'File uploaded successfully');
-          } else {
-            alert('File uploaded (no response body)');
-          }
-
-          setUploadedFile(null);
-          setDepartmentInput('');
-          if (fileInputRef.current) fileInputRef.current.value = '';
-          fetchFlagshipUploads();
-        } catch (err) {
-          console.error('HOD upload error:', err);
-          const msg = err.response && err.response.data && err.response.data.error
-            ? err.response.data.error
-            : err.message || 'Upload failed';
-          alert('Error uploading file: ' + msg);
-        } finally {
-          setUploading(false);
-        }
-        return;
-      }
-
-      // Superadmin path: parse Excel/CSV and import via existing endpoint
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const workbook = XLSX.read(e.target.result, { type: 'array' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const data = XLSX.utils.sheet_to_json(worksheet);
-
-          if (data.length === 0) {
-            alert('No data found in the file');
-            setUploading(false);
-            return;
-          }
-
-          const response = await uploadFlagshipData({
-            file_data: data,
-            file_name: uploadedFile.name,
-            import_type: importType,
-            department_name: departmentInput || 'General'
-          });
-
-          if (response.data.success) {
-            alert(`Successfully imported ${response.data.successful} records`);
-            setUploadedFile(null);
-            setDepartmentInput('');
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            fetchFlagshipUploads();
-          }
-        } catch (error) {
-          console.error('Error processing file:', error);
-          alert('Error processing file: ' + error.message);
-        } finally {
-          setUploading(false);
-        }
-      };
-
-      reader.readAsArrayBuffer(uploadedFile);
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Error uploading file');
-      setUploading(false);
-    }
-  };
-
-  const [showDeleteReasonModal, setShowDeleteReasonModal] = useState(false);
-  const [deleteReason, setDeleteReason] = useState('');
-  const [selectedToDelete, setSelectedToDelete] = useState(null);
-
-  const handleDelete = (item) => {
-    setSelectedToDelete(item);
-    setShowDeleteReasonModal(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteReason.trim()) {
-      alert('Please provide a reason for deletion');
+  const handleUpload = async () => {
+    if (!uploadedFile) {
+      alert('Please select a file to upload');
       return;
     }
+
     try {
-      await deleteFlagshipProgramme(selectedToDelete.id, { reason: deleteReason });
-      setShowDeleteReasonModal(false);
-      setDeleteReason('');
-      setSelectedToDelete(null);
-      fetchFlagshipUploads();
-    } catch (error) {
-      alert('Error deleting item: ' + (error.message || 'Unknown error'));
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+      formData.append('upload_type', 'report');
+      formData.append('fileFormat', uploadedFile.name.split('.').pop().toLowerCase());
+
+      const response = await fetch('http://localhost:5000/api/uploads/report', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        alert('Report uploaded successfully');
+        setUploadedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        fetchReports();
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (err) {
+      console.error('Error uploading report:', err);
+      alert('Failed to upload report');
     }
   };
 
   const handleExport = async () => {
+    if (reports.length === 0) {
+      alert('No reports to export');
+      return;
+    }
+
     try {
       setExporting(true);
-      const response = await exportFlagshipProgrammesCSV(selectedDepartment);
-      
-      let content = response.data;
-      let filename = `flagship_${importType}s_${Date.now()}`;
-      let contentType = 'text/csv';
+      const response = await fetch(`http://localhost:5000/api/uploads/reports/export?format=${selectedFormat}&hodId=${userHodId}`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
 
-      if (selectedExportFormat === 'xlsx') {
-        // Convert CSV to XLSX
-        const lines = content.split('\n');
-        const data = lines.map(line => line.split(','));
-        const ws = XLSX.utils.aoa_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Data');
-        XLSX.writeFile(wb, `${filename}.xlsx`);
-        setExporting(false);
-        return;
-      } else if (selectedExportFormat === 'docx') {
-        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        filename += '.docx';
-      } else {
-        filename += '.csv';
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reports-export.${selectedFormat}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       }
-
-      const url = window.URL.createObjectURL(new Blob([content]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      alert('Error exporting data');
+    } catch (err) {
+      console.error('Error exporting reports:', err);
+      alert('Failed to export reports');
     } finally {
       setExporting(false);
     }
   };
 
-  // Only show active files
-  const displayData = flagshipUploads.filter(f => f.status !== 'deleted');
-  const paginatedData = displayData.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
-  const totalPages = Math.ceil(displayData.length / pageSize);
+  const handleDeleteClick = (report) => {
+    setSelectedReportToDelete(report);
+    setShowDeleteReasonModal(true);
+  };
+
+  // const handleConfirmDelete = async () => {
+  //   if (!deleteReason.trim()) {
+  //     alert('Please provide a reason for deletion');
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await fetch(`http://localhost:5000/api/uploads/report/${selectedReportToDelete.id}`, {
+  //       method: 'DELETE',
+  //       headers: {
+  //         'Authorization': `Bearer ${user.token}`,
+  //         'Content-Type': 'application/json'
+  //       },
+  //       body: JSON.stringify({ reason: deleteReason })
+  //     });
+
+  //     if (response.ok) {
+  //       alert('Report deleted successfully');
+  //       setShowDeleteReasonModal(false);
+  //       setDeleteReason('');
+  //       setSelectedReportToDelete(null);
+  //       fetchReports();
+  //     }
+  //   } catch (err) {
+  //     console.error('Error deleting report:', err);
+  //     alert('Failed to delete report');
+  //   }
+  // };
+  const handleConfirmDelete = async () => {
+  if (!deleteReason.trim()) {
+    alert('Please provide a reason for deletion');
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `http://localhost:5000/api/uploads/report/${selectedReportToDelete.id}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: deleteReason })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Delete failed');
+    }
+
+    // ✅ REMOVE FROM UI IMMEDIATELY
+    setReports(prev =>
+      prev.filter(r => r.id !== selectedReportToDelete.id)
+    );
+
+    setShowDeleteReasonModal(false);
+    setDeleteReason('');
+    setSelectedReportToDelete(null);
+
+    alert('Report deleted successfully');
+  } catch (err) {
+    console.error('Error deleting report:', err);
+    alert('Failed to delete report');
+  }
+};
 
 
   return (
-    <>
-      {/* Controls and View Toggle */}
+    <div className="reports-container">
       <div className="reports-header">
-        <h2>Flagship Programmes</h2>
+        <h2>Reports</h2>
         <div className="reports-actions">
+          <div>
+            <label style={{ marginRight: '10px' }}>Export Format:</label>
+            <select 
+              value={selectedFormat} 
+              onChange={(e) => setSelectedFormat(e.target.value)}
+              style={{
+                padding: '8px',
+                borderRadius: '6px',
+                border: '1px solid #ccc',
+                marginRight: '10px'
+              }}
+            >
+              <option value="pdf">PDF</option>
+              <option value="xlsx">Excel</option>
+              <option value="docx">Word</option>
+            </select>
+            <button 
+              onClick={handleExport}
+              disabled={exporting}
+              style={{
+                padding: '8px 16px',
+                background: '#388e3c',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: exporting ? 'not-allowed' : 'pointer',
+                marginRight: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <FiDownload /> Export
+            </button>
+          </div>
           <div>
             <button onClick={() => setViewFormat(viewFormat === 'cards' ? 'list' : 'cards')}
               style={{
@@ -254,13 +243,13 @@ const FlagshipProgrammes = () => {
             >
               {viewFormat === 'cards' ? <FiList /> : <FiGrid />}
             </button>
-            <input
+            <input 
               ref={fileInputRef}
-              type="file"
+              type="file" 
               onChange={handleFileSelect}
               style={{ display: 'none' }}
             />
-            <button
+            <button 
               onClick={() => fileInputRef.current?.click()}
               style={{
                 padding: '8px 16px',
@@ -291,8 +280,8 @@ const FlagshipProgrammes = () => {
           alignItems: 'center'
         }}>
           <span>{uploadedFile.name}</span>
-          <button
-            onClick={handleFileUpload}
+          <button 
+            onClick={handleUpload}
             style={{
               padding: '6px 12px',
               background: '#2e7d32',
@@ -308,9 +297,9 @@ const FlagshipProgrammes = () => {
       )}
 
       {loading ? (
-        <p>Loading flagship programmes...</p>
-      ) : displayData.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#666', marginTop: '32px' }}>No flagship programmes uploaded yet</p>
+        <p>Loading reports...</p>
+      ) : reports.length === 0 ? (
+        <p style={{ textAlign: 'center', color: '#666', marginTop: '32px' }}>No reports uploaded yet</p>
       ) : (
         <>
           {viewFormat === 'cards' ? (
@@ -319,24 +308,26 @@ const FlagshipProgrammes = () => {
               gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
               gap: '16px'
             }}>
-              {displayData.map(item => (
-                <div key={item.id} style={{
+              {reports
+  .filter(report => report.status !== 'deleted')
+  .map(report => (
+                <div key={report.id} style={{
                   padding: '16px',
                   border: '1px solid #e0e0e0',
                   borderRadius: '8px',
                   background: '#fafafa'
                 }}>
-                  <h4>{item.file_name}</h4>
+                  <h4>{report.file_name}</h4>
                   <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
-                    Format: <strong>{item.file_format?.toUpperCase()}</strong>
+                    Format: <strong>{report.file_format?.toUpperCase()}</strong>
                   </p>
                   <p style={{ fontSize: '12px', color: '#666' }}>
-                    {new Date(item.created_at).toLocaleDateString()}
+                    {new Date(report.created_at).toLocaleDateString()}
                   </p>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                     <button
                       onClick={async () => {
-                        const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${item.id}`;
+                        const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${report.id}`;
                         const response = await fetch(url, {
                           headers: { 'Authorization': `Bearer ${user.token}` }
                         });
@@ -347,7 +338,7 @@ const FlagshipProgrammes = () => {
                         const blob = await response.blob();
                         const a = document.createElement('a');
                         a.href = window.URL.createObjectURL(blob);
-                        a.download = item.file_name;
+                        a.download = report.file_name;
                         document.body.appendChild(a);
                         a.click();
                         window.URL.revokeObjectURL(a.href);
@@ -355,7 +346,7 @@ const FlagshipProgrammes = () => {
                       }}
                       style={{
                         padding: '6px 12px',
-                        background: '#388e3c',
+                        background: '#1976d2',
                         color: 'white',
                         border: 'none',
                         borderRadius: '4px',
@@ -369,8 +360,8 @@ const FlagshipProgrammes = () => {
                     >
                       <FiDownload /> Download
                     </button>
-                    <button
-                      onClick={() => handleDelete(item)}
+                    <button 
+                      onClick={() => handleDeleteClick(report)}
                       style={{
                         padding: '6px 12px',
                         background: '#d32f2f',
@@ -401,15 +392,17 @@ const FlagshipProgrammes = () => {
                 </tr>
               </thead>
               <tbody>
-                {displayData.map(item => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '12px' }}>{item.file_name}</td>
-                    <td style={{ padding: '12px' }}>{item.file_format?.toUpperCase()}</td>
-                    <td style={{ padding: '12px' }}>{new Date(item.created_at).toLocaleDateString()}</td>
+               {reports
+  .filter(report => report.status !== 'deleted')
+  .map(report => ( 
+                  <tr key={report.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px' }}>{report.file_name}</td>
+                    <td style={{ padding: '12px' }}>{report.file_format?.toUpperCase()}</td>
+                    <td style={{ padding: '12px' }}>{new Date(report.created_at).toLocaleDateString()}</td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       <button
                         onClick={async () => {
-                          const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${item.id}`;
+                          const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${report.id}`;
                           const response = await fetch(url, {
                             headers: { 'Authorization': `Bearer ${user.token}` }
                           });
@@ -420,7 +413,7 @@ const FlagshipProgrammes = () => {
                           const blob = await response.blob();
                           const a = document.createElement('a');
                           a.href = window.URL.createObjectURL(blob);
-                          a.download = item.file_name;
+                          a.download = report.file_name;
                           document.body.appendChild(a);
                           a.click();
                           window.URL.revokeObjectURL(a.href);
@@ -428,7 +421,7 @@ const FlagshipProgrammes = () => {
                         }}
                         style={{
                           padding: '6px 12px',
-                          background: '#388e3c',
+                          background: '#1976d2',
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
@@ -436,10 +429,10 @@ const FlagshipProgrammes = () => {
                           marginRight: '8px'
                         }}
                       >
-                        <FiDownload /> Download
+                        <FiDownload />
                       </button>
-                      <button
-                        onClick={() => handleDelete(item)}
+                      <button 
+                        onClick={() => handleDeleteClick(report)}
                         style={{
                           padding: '6px 12px',
                           background: '#d32f2f',
@@ -460,7 +453,6 @@ const FlagshipProgrammes = () => {
         </>
       )}
 
-      {/* Delete Reason Modal (moved outside table/card map) */}
       {showDeleteReasonModal && (
         <div style={{
           position: 'fixed',
@@ -481,8 +473,8 @@ const FlagshipProgrammes = () => {
             minWidth: '400px',
             boxShadow: '0 2px 16px rgba(0,0,0,0.2)'
           }}>
-            <h3>Delete File</h3>
-            <p>Please provide a reason for deleting this file:</p>
+            <h3>Delete Report</h3>
+            <p>Please provide a reason for deleting this report:</p>
             <textarea
               value={deleteReason}
               onChange={(e) => setDeleteReason(e.target.value)}
@@ -502,7 +494,7 @@ const FlagshipProgrammes = () => {
                 onClick={() => {
                   setShowDeleteReasonModal(false);
                   setDeleteReason('');
-                  setSelectedToDelete(null);
+                  setSelectedReportToDelete(null);
                 }}
                 style={{
                   padding: '8px 16px',
@@ -531,8 +523,8 @@ const FlagshipProgrammes = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
-}
+};
 
-export default FlagshipProgrammes;
+export default Reports;

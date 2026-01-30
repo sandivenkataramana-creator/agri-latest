@@ -10,6 +10,8 @@ const DAO = () => {
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isHOD = user.role === 'hod';
+  const userHodId = user.hod_id;
   const isSuperAdmin = user.role === 'superadmin';
   const isReadOnly = !isSuperAdmin;
 
@@ -20,7 +22,10 @@ const DAO = () => {
   const fetchDAOs = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/dao');
+      const url = isHOD 
+        ? `http://localhost:5000/api/dao?hodId=${userHodId}`
+        : 'http://localhost:5000/api/dao';
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setDAOs(Array.isArray(data) ? data : []);
