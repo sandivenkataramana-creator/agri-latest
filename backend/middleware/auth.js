@@ -44,6 +44,88 @@ async function authenticateJWT(req, res, next) {
   }
 }
 
+// async function handleUpload(req, res, uploadType) {
+//   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+//   const hodId = req.user.hod_id;
+//   if (!hodId) return res.status(400).json({ error: 'No hod_id' });
+
+//   const [hod] = await db.query('SELECT id FROM hods WHERE id = ?', [hodId]);
+//   if (!hod.length) return res.status(400).json({ error: 'Invalid HOD' });
+
+//   const fileFormat = req.body.fileFormat || req.file.originalname.split('.').pop();
+//   const description = req.body.description || '';
+
+//   const [result] = await db.query(
+//     'INSERT INTO uploads (file_name, file_path, upload_type, file_format, hod_id, description, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+//     [
+//       req.file.originalname,
+//       req.file.path,
+//       uploadType,
+//       fileFormat,
+//       hodId,
+//       req.user.id,
+//       req.user.username
+//     ]
+
+//   );
+
+
+//   res.json({ success: true, id: result.insertId });
+// }
+
+const handleUpload = (uploadType) => {
+  return async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      const hodId = req.user?.hod_id;
+      if (!hodId) {
+        return res.status(400).json({ error: 'No hod_id' });
+      }
+
+      const [hod] = await db.query(
+        'SELECT id FROM hods WHERE id = ?',
+        [hodId]
+      );
+
+      if (!hod.length) {
+        return res.status(400).json({ error: 'Invalid HOD' });
+      }
+
+      const fileFormat =
+        req.body.fileFormat || req.file.originalname.split('.').pop();
+
+      const description = req.body.description || '';
+
+      const [result] = await db.query(
+  `
+  INSERT INTO hod_uploads
+  (hod_id, file_name, file_path, file_format, upload_type, description)
+  VALUES (?, ?, ?, ?, ?, ?)
+  `,
+  [
+    hodId,
+    req.file.originalname,
+    req.file.path,
+    fileFormat,
+    uploadType,
+    description
+  ]
+);
+      res.status(201).json({
+        success: true,
+        id: result.insertId
+      });
+    } catch (err) {
+      console.error('Upload failed:', err);
+      res.status(500).json({ error: 'Upload failed' });
+    }
+  };
+};
+
 function requireRole(allowedRoles) {
   return (req, res, next) => {
     if (!req.user || !req.user.role) return res.status(403).json({ error: 'Forbidden' });
@@ -56,4 +138,4 @@ function requireRole(allowedRoles) {
   };
 }
 
-module.exports = { authenticateJWT, requireRole, signToken };
+module.exports = { authenticateJWT, requireRole, signToken ,handleUpload};

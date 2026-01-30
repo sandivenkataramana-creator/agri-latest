@@ -8,6 +8,10 @@ import './Schemes.css';
 
 const Schemes = () => {
   const location = useLocation();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isHOD = user.role === 'hod';
+  const userHodId = user.hod;
+
   const [hods, setHods] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +86,7 @@ const Schemes = () => {
       const fetchFinancialData = async () => {
         try {
           console.log('useEffect: Financial year changed to', financialYear, 'fetching data...');
-          const response = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}&_t=₹{Date.now()}`);
+          const response = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`);
           const data = await response.json();
           console.log('useEffect: Fetched', data.length, 'records for year', financialYear);
           setFinancialRows(Array.isArray(data) ? data : []);
@@ -115,9 +119,9 @@ const Schemes = () => {
       setFinancialRows([]); // Clear before fetching to force fresh render
       
       const [hodsRes, categoriesRes, financialRes] = await Promise.all([
-        getHODs(),
+        isHOD ? Promise.resolve({ data: [] }) : getHODs(),
         getCategories(),
-        fetch(`http://localhost:5000/api/schemes/financial-progress?year=₹{financialYear}&_t=₹{Date.now()}`) // Add cache-buster
+        fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}${isHOD ? `&hodId=${userHodId}` : ''}&_t=${Date.now()}`) // Add cache-buster
           .then(res => res.json())
           .catch(err => {
             console.error('Error fetching financial progress:', err);
@@ -142,7 +146,8 @@ const Schemes = () => {
 
   const fetchStateSchemeData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/all?year=₹{financialYear}&_t=₹{Date.now()}`);
+      const hodParam = isHOD ? `&hodId=${userHodId}` : '';
+      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/all?year=${financialYear}${hodParam}&_t=${Date.now()}`);
       const data = await response.json();
       setStateSchemeData(Array.isArray(data) ? data : []);
       console.log('State scheme data fetched:', data);
@@ -154,7 +159,8 @@ const Schemes = () => {
 
   const fetchRevenueData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/revenue/all?year=₹{financialYear}&_t=₹{Date.now()}`);
+      const hodParam = isHOD ? `&hodId=${userHodId}` : '';
+      const response = await fetch(`http://localhost:5000/api/schemes/revenue/all?year=${financialYear}${hodParam}&_t=${Date.now()}`);
       const data = await response.json();
       setRevenueData(Array.isArray(data) ? data : []);
       console.log('Revenue data fetched:', data);
@@ -169,8 +175,9 @@ const Schemes = () => {
 // ===============================
 const fetchCentralSchemes = async (year = financialYear) => {
   try {
+    const hodParam = isHOD ? `&hodId=${userHodId}` : '';
     const res = await fetch(
-      `http://localhost:5000/api/schemes/financial-progress?year=₹{year}&_t=₹{Date.now()}`
+      `http://localhost:5000/api/schemes/financial-progress?year=${year}${hodParam}&_t=${Date.now()}`
     );
     const data = await res.json();
 

@@ -16,6 +16,12 @@ import './Budget.css';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const Budget = () => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isSuperAdmin = user.role === 'superadmin';
+  const isHOD = user.role === 'hod';
+  const userHodId = user.hod_id;
+  const isReadOnly = !isSuperAdmin;
+
   const [budgets, setBudgets] = useState([]);
   const [hods, setHods] = useState([]);
   const [schemes, setSchemes] = useState([]);
@@ -25,7 +31,7 @@ const Budget = () => {
   const [villages, setVillages] = useState([]);
   const [categories, setCategories] = useState([]);
   const [daos, setDaos] = useState([]);
-  const [filters, setFilters] = useState({ hod_id: '', category: '', state_id: '', district_id: '', mandal_id: '', village: '' });
+  const [filters, setFilters] = useState({ hod_id: isHOD ? userHodId : '', category: '', state_id: '', district_id: '', mandal_id: '', village: '' });
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,9 +62,6 @@ const Budget = () => {
     mandal_id: '',
     village: ''
   });
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isSuperAdmin = user.role === 'superadmin';
-  const isReadOnly = !isSuperAdmin;
 
   useEffect(() => {
     fetchData();
@@ -67,8 +70,9 @@ const Budget = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const budgetParams = isHOD ? { hodId: userHodId } : {};
       const [budgetRes, hodsRes, schemesRes, categoriesRes, statesRes, daosRes] = await Promise.all([
-        getBudget(),
+        getBudget(budgetParams),
         getHODs(),
         getSchemes(),
         getCategories(),
@@ -233,7 +237,7 @@ const Budget = () => {
     }
   };
   const clearFilters = () => {
-    setFilters({ hod_id: '', category: '', state_id: '', district_id: '', mandal_id: '', village: '' });
+    setFilters({ hod_id: isHOD ? userHodId : '', category: '', state_id: '', district_id: '', mandal_id: '', village: '' });
     setDistricts([]);
     setMandals([]);
   };
@@ -509,7 +513,8 @@ const Budget = () => {
                 name="hod_id" 
                 value={filters.hod_id} 
                 onChange={(e) => setFilters({ ...filters, hod_id: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', backgroundColor: 'white' }}
+                disabled={isHOD}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', backgroundColor: 'white', opacity: isHOD ? 0.6 : 1, cursor: isHOD ? 'not-allowed' : 'pointer' }}
               >
                 <option value="">All HODs</option>
                 {hods.map(hod => (
