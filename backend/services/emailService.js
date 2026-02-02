@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
+const appConfig = require('../config/appConfig');
 
 // Debug: Log SMTP configuration on startup
 console.log('Email Service Initializing...');
@@ -68,7 +69,7 @@ const emailTemplates = {
           
           <p><strong>Important:</strong> For security reasons, please change your password immediately after your first login.</p>
           
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/change-password" class="button">Change Password</a>
+          <a href="${appConfig.frontendUrl}/change-password" class="button">Change Password</a>
           
           <p>If you have any questions, please contact the system administrator.</p>
           
@@ -317,7 +318,7 @@ const sendAccountCredentials = async (email, username, password, userType = 'HOD
             <li>Click the Login button</li>
           </ol>
           
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" class="button">Go to Login</a>
+          <a href="${appConfig.frontendUrl}/login" class="button">Go to Login</a>
           
           <p>If you have any questions or need assistance, please contact the system administrator.</p>
           

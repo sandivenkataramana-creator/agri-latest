@@ -287,6 +287,8 @@ router.get('/budget-breakdown', async (req, res) => {
 // Get dashboard overview stats
 router.get('/stats', async (req, res) => {
   try {
+    console.log('[Dashboard Stats] Request received with params:', req.query);
+    
     const year = req.query.year;
     const hodId = req.query.hod_id;
     const budgetFilter = buildBudgetYearFilter(year);
@@ -332,6 +334,10 @@ router.get('/stats', async (req, res) => {
       }
       
       const [todayAttendance] = await db.query(attendanceQuery, attendanceParams);
+
+      console.log('[Dashboard Stats] HOD attendance query:', attendanceQuery);
+      console.log('[Dashboard Stats] HOD attendance params:', attendanceParams);
+      console.log('[Dashboard Stats] HOD attendance result:', todayAttendance[0]);
 
       let budgetSql = `SELECT COALESCE(SUM(allocated_amount), 0) as total, COALESCE(SUM(utilized_amount), 0) as utilized FROM budget WHERE hod_id = ?`;
       const budgetParams = [hodId];
@@ -395,6 +401,10 @@ router.get('/stats', async (req, res) => {
     
     const [todayAttendance] = await db.query(attendanceQuery, attendanceParams);
 
+    console.log('[Dashboard Stats] General attendance query:', attendanceQuery);
+    console.log('[Dashboard Stats] General attendance params:', attendanceParams);
+    console.log('[Dashboard Stats] General attendance result:', todayAttendance[0]);
+
     const budgetSql = `SELECT COALESCE(SUM(allocated_amount), 0) as total, COALESCE(SUM(utilized_amount), 0) as utilized FROM budget ${budgetFilter.clause}`;
     const [budget] = await db.query(budgetSql, budgetFilter.params);
 
@@ -423,7 +433,8 @@ router.get('/stats', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Dashboard stats error:', error.message);
+    console.error('[Dashboard Stats] ERROR:', error.message);
+    console.error('[Dashboard Stats] Full error:', error);
     // Return sensible defaults so UI remains functional even if DB is not reachable
     return res.json({
       totalHods: 0,
@@ -728,6 +739,8 @@ router.get('/schemes-by-hod', async (req, res) => {
 // Get attendance summary by HOD
 router.get('/attendance-by-hod', async (req, res) => {
   try {
+    console.log('[attendance-by-hod] Request received with params:', req.query);
+    
     const year = req.query.year;
     const month = req.query.month;
     const date = req.query.date;
@@ -756,6 +769,17 @@ router.get('/attendance-by-hod', async (req, res) => {
       whereClause += ' AND a.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
     }
 
+    console.log('[attendance-by-hod] Query:', `SELECT h.name as hod_name, h.department,
+             COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present,
+             COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
+             COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day,
+             COUNT(CASE WHEN a.status = 'late' THEN 1 END) as late,
+             COUNT(CASE WHEN a.status = 'leave' THEN 1 END) as on_leave
+      FROM hods h
+      LEFT JOIN attendance a ON h.id = a.hod_id
+      ${whereClause}
+      GROUP BY h.id, h.name, h.department`, 'params:', params);
+
     const [results] = await db.query(`
       SELECT h.name as hod_name, h.department,
              COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present,
@@ -768,9 +792,12 @@ router.get('/attendance-by-hod', async (req, res) => {
       ${whereClause}
       GROUP BY h.id, h.name, h.department
     `, params);
+    
+    console.log('[attendance-by-hod] Results:', results);
     res.json(results);
   } catch (error) {
-    console.error('Error in /attendance-by-hod:', error);
+    console.error('[attendance-by-hod] Error:', error.message);
+    console.error('[attendance-by-hod] Error details:', error);
     return res.json([]);
   }
 });

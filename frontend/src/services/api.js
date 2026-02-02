@@ -1,6 +1,8 @@
 import axios from 'axios';
+import appConfig from '../config/appConfig';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Use centralized configuration for API base URL
+const API_BASE_URL = appConfig.apiBaseUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -199,6 +201,16 @@ export const getDepartmentWiseAttendance = (params = {}) => api.get('/attendance
 export const createAttendance = (data) => api.post('/attendance', data);
 export const updateAttendance = (id, data) => api.put(`/attendance/${id}`, data);
 export const deleteAttendance = (id) => api.delete(`/attendance/${id}`);
+
+// Attendance Import from Third-Party System
+export const generateThirdPartyApiKey = (data) => api.post('/attendance-import/generate-api-key', data);
+export const getThirdPartyApiKeys = () => api.get('/attendance-import/api-keys');
+export const toggleApiKey = (id, data) => api.patch(`/attendance-import/api-keys/${id}/toggle`, data);
+export const getImportLogs = (params = {}) => api.get('/attendance-import/import-logs', { params });
+export const getApiKeyDetails = (id) => api.get(`/attendance-import/api-keys/${id}/view`);
+export const regenerateApiKey = (id) => api.post(`/attendance-import/api-keys/${id}/regenerate`);
+export const bulkUploadAttendance = (data) => api.post('/attendance-import/bulk-upload-attendance', data);
+export const getHODsForApiKey = () => api.get('/attendance-import/hods-list');
 
 // Revenue
 export const getRevenue = () => api.get('/revenue');

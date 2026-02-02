@@ -99,7 +99,7 @@ const Staff = () => {
       });
     } else {
       setEditingStaff(null);
-      setFormData({ name: '', employee_id: '', designation: '', department: '', category_id: '', hod_id: '', email: '', phone: '', status: 'active' });
+      setFormData({ name: '', employee_id: '', designation: '', section: '', department: '', category_id: '', hod_id: '', email: '', phone: '', location: '', status: 'active' });
     }
     setIsModalOpen(true);
   };
@@ -232,9 +232,11 @@ const Staff = () => {
                 <th>Employee ID</th>
                 <th>Name</th>
                 <th>Designation</th>
+                <th>Section</th>
                 <th>Department</th>
                 <th>Email</th>
                 <th>Phone</th>
+                <th>Location</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -246,9 +248,11 @@ const Staff = () => {
                   <td><strong>{member.employee_id}</strong></td>
                   <td>{member.name}</td>
                   <td>{member.designation}</td>
+                  <td>{member.section || member.hod_section}</td>
                   <td>{member.department || member.hod_department}</td>
                   <td>{member.email}</td>
                   <td>{member.phone}</td>
+                  <td>{member.location}</td>
                   <td>
                     <span className={`status-badge ₹{member.status}`}>{member.status}</span>
                   </td>
@@ -321,6 +325,10 @@ const Staff = () => {
             <input type="text" name="designation" value={formData.designation} onChange={handleChange} required />
           </div>
           <div className="form-group">
+            <label>Section</label>
+            <input type="text" name="section" value={formData.section} onChange={handleChange} />
+          </div>
+          <div className="form-group">
             <label>Department Category {isSuperAdmin && <button type="button" className="btn-link" onClick={() => setIsCategoryModalOpen(true)} style={{ fontSize: '12px', marginLeft: '8px' }}>+ Create New</button>}</label>
             <select
               name="category_id"
@@ -354,6 +362,10 @@ const Staff = () => {
           <div className="form-group">
             <label>Phone</label>
             <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required />
+          </div>
+          <div className="form-group">
+            <label>Location</label>
+            <input type="text" name="location" value={formData.location} onChange={handleChange} />
           </div>
           {!editingStaff && (
             <div className="form-group">

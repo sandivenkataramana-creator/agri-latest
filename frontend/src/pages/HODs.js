@@ -4,6 +4,7 @@ import Modal from '../components/Modal';
 import { FiPlus, FiEdit2, FiTrash2, FiMail } from 'react-icons/fi';
 import { getHODs, createHOD, updateHOD, deleteHOD, getCategories, createCategory } from '../services/api';
 import axios from 'axios';
+import appConfig from '../config/appConfig';
 
 const HODs = () => {
   const [hods, setHODs] = useState([]);
@@ -181,7 +182,7 @@ const HODs = () => {
       
       // Create the user account with auto-generated password
       const accountResponse = await axios.post(
-        `http://localhost:5000/api/hods/${passwordData.hodId}/create-account`,
+        `${appConfig.apiBaseUrl}/hods/${passwordData.hodId}/create-account`,
         {}, // No password needed - backend will auto-generate
         {
           headers: {

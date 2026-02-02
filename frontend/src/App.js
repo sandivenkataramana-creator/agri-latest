@@ -27,6 +27,7 @@ import Employees from './pages/Employees';
 import Reports from './pages/Reports';
 import UploadedFiles from './pages/UploadedFiles';
 import DeletionLogs from './pages/DeletionLogs';
+import ThirdPartyIntegration from './pages/ThirdPartyIntegration';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -101,6 +102,7 @@ function App() {
                       <Route path="/deletion-logs" element={<DeletionLogs />} />
                       {user.role === 'superadmin' && <Route path="/send-notification" element={<SendNotification />} />}
                       {user.role === 'superadmin' && <Route path="/send-message" element={<SendMessage />} />}
+                      {user.role === 'superadmin' && <Route path="/third-party-integration" element={<ThirdPartyIntegration />} />}
                     </>
                   )}
                   {((user.role === 'admin' || user.role === 'superadmin') || user.role === 'hod') && (

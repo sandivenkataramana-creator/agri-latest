@@ -18,7 +18,8 @@ import {
   FiMail,
   FiUpload,
   FiDownload,
-  FiChevronDown
+  FiChevronDown,
+  FiKey
 } from 'react-icons/fi';
 
 const Sidebar = ({ isCollapsed, onToggle }) => {
@@ -111,6 +112,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
         items.push(
           { path: '/send-notification', icon: <FiBell />, label: 'Send Notification' },
           { path: '/send-message', icon: <FiMail />, label: 'Send Message' },
+          { path: '/third-party-integration', icon: <FiKey />, label: 'Third-Party Integration' }
         );
       }
 

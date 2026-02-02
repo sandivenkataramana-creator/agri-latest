@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiUpload, FiDownload, FiTrash2, FiEye, FiGrid, FiList } from 'react-icons/fi';
+import appConfig from '../config/appConfig';
 import './Reports.css';
 
 const Reports = () => {
@@ -27,7 +28,7 @@ const Reports = () => {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/uploads/reports?hodId=${userHodId}`, {
+      const response = await fetch(`${appConfig.apiBaseUrl}/uploads/reports?hodId=${userHodId}`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -61,7 +62,7 @@ const Reports = () => {
       formData.append('upload_type', 'report');
       formData.append('fileFormat', uploadedFile.name.split('.').pop().toLowerCase());
 
-      const response = await fetch('http://localhost:5000/api/uploads/report', {
+      const response = await fetch(`${appConfig.apiBaseUrl}/uploads/report`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -91,7 +92,7 @@ const Reports = () => {
 
     try {
       setExporting(true);
-      const response = await fetch(`http://localhost:5000/api/uploads/reports/export?format=${selectedFormat}&hodId=${userHodId}`, {
+      const response = await fetch(`${appConfig.apiBaseUrl}/uploads/reports/export?format=${selectedFormat}&hodId=${userHodId}`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -157,7 +158,7 @@ const Reports = () => {
 
   try {
     const response = await fetch(
-      `http://localhost:5000/api/uploads/report/${selectedReportToDelete.id}`,
+      `${appConfig.apiBaseUrl}/uploads/report/${selectedReportToDelete.id}`,
       {
         method: 'DELETE',
         headers: {
@@ -327,7 +328,7 @@ const Reports = () => {
                   <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                     <button
                       onClick={async () => {
-                        const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${report.id}`;
+                        const url = `${appConfig.apiBaseUrl}/uploads/download/${report.id}`;
                         const response = await fetch(url, {
                           headers: { 'Authorization': `Bearer ${user.token}` }
                         });
@@ -402,7 +403,7 @@ const Reports = () => {
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       <button
                         onClick={async () => {
-                          const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${report.id}`;
+                          const url = `${appConfig.apiBaseUrl}/uploads/download/${report.id}`;
                           const response = await fetch(url, {
                             headers: { 'Authorization': `Bearer ${user.token}` }
                           });

@@ -7,15 +7,20 @@ const app = express();
 // Better logging for debugging unexpected exits
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION:', err);
+  console.error('Stack:', err.stack);
   // Don't exit on SMTP errors
   if (err.code === 'EAUTH') {
     console.log('Continuing despite SMTP authentication error...');
     return;
   }
-  process.exit(1);
+  // Try to keep going
+  // process.exit(1);
 });
 process.on('unhandledRejection', (reason, promise) => {
   console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  if (reason && reason.stack) {
+    console.error('Stack:', reason.stack);
+  }
 });
 
 // Middleware
@@ -43,6 +48,7 @@ app.use('/api/kpis', require('./routes/kpis'));
 app.use('/api/nodal-officers', require('./routes/nodalOfficers'));
 app.use('/api/dao', require('./routes/dao'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/attendance-import', require('./routes/attendanceImport'));
 app.use('/api/revenue', require('./routes/revenue'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/notifications', require('./routes/notifications'));

@@ -279,10 +279,14 @@ const Dashboard = () => {
     // Fetch only attendance-related data to avoid full page refresh
     const fetchAttendanceData = async () => {
       try {
+        console.log('[Dashboard] Fetching attendance data with params:', params);
         const [statsRes, attendanceRes] = await Promise.all([
           getDashboardStats(params),
           getAttendanceByHOD(params)
         ]);
+        
+        console.log('[Dashboard] Attendance API Response:', attendanceRes);
+        console.log('[Dashboard] Stats API Response:', statsRes);
         
         // Update only attendance-related state
         setStats(prevStats => ({
@@ -297,9 +301,14 @@ const Dashboard = () => {
           }
         }));
         
+        console.log('[Dashboard] Stats Response todayAttendance:', statsRes.data.todayAttendance);
+        console.log('[Dashboard] Updated stats.todayAttendance:', statsRes.data?.todayAttendance);
+        
         setAttendanceByHOD(attendanceRes.data || []);
+        console.log('[Dashboard] Attendance state updated:', attendanceRes.data);
       } catch (err) {
-        console.error('Error fetching attendance data:', err);
+        console.error('[Dashboard] Error fetching attendance data:', err);
+        console.error('[Dashboard] Error details:', err.response?.data || err.message);
       }
     };
     
@@ -393,6 +402,9 @@ const Dashboard = () => {
       ]);
 
       // Set stats
+      console.log('[Dashboard] Stats response:', statsRes.data);
+      console.log('[Dashboard] Today Attendance from stats:', statsRes.data.todayAttendance);
+      
       setStats({
         totalHods: statsRes.data.totalHods || 0,
         activeHods: statsRes.data.activeHods || 0,
