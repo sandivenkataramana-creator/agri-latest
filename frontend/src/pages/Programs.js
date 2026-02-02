@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
+import appConfig from '../config/appConfig';
 import './Programs.css';
 
 const Programs = () => {
@@ -34,7 +35,7 @@ const Programs = () => {
   const fetchPrograms = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/programs');
+      const response = await fetch(`${appConfig.apiBaseUrl}/programs`);
       if (response.ok) {
         const data = await response.json();
         setPrograms(Array.isArray(data) ? data : data.data || []);
@@ -90,7 +91,7 @@ const Programs = () => {
     try {
       if (editingId) {
         // Update
-        const response = await fetch(`http://localhost:5000/api/programs/${editingId}`, {
+        const response = await fetch(`${appConfig.apiBaseUrl}/programs/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify(formData)
@@ -100,7 +101,7 @@ const Programs = () => {
         }
       } else {
         // Create
-        const response = await fetch('http://localhost:5000/api/programs', {
+        const response = await fetch(`${appConfig.apiBaseUrl}/programs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify(formData)
@@ -122,7 +123,7 @@ const Programs = () => {
     if (isReadOnly) return;
     if (window.confirm('Are you sure?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/programs/${id}`, {
+        const response = await fetch(`${appConfig.apiBaseUrl}/programs/${id}`, {
           method: 'DELETE',
           headers: { ...getAuthHeaders() }
         });

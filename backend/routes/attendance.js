@@ -123,6 +123,9 @@ router.get('/statistics', authenticateJWT, async (req, res) => {
     const { role, hod_id: userHodId } = req.user;
     const { start_date, end_date, hod_id, department, period, status, employee_type } = req.query;
     
+    console.log('[Attendance Statistics] Request received with params:', { period, hod_id, department, employee_type });
+    console.log('[Attendance Statistics] User role:', role, 'User hod_id:', userHodId);
+    
     let dateFilter = '';
     let params = [];
     
@@ -299,6 +302,11 @@ router.get('/statistics', authenticateJWT, async (req, res) => {
       GROUP BY h.id, h.department, h.name
     `, deptParams);
     
+    console.log('[Attendance Statistics] Summary:', summary[0]);
+    console.log('[Attendance Statistics] Daily trend records:', dailyTrend?.length || 0);
+    console.log('[Attendance Statistics] Monthly trend records:', monthlyTrend?.length || 0);
+    console.log('[Attendance Statistics] Department wise records:', departmentWise?.length || 0);
+    
     res.json({
       summary: summary[0],
       monthlyTrend: monthlyTrend.reverse(),
@@ -306,7 +314,8 @@ router.get('/statistics', authenticateJWT, async (req, res) => {
       departmentWise
     });
   } catch (error) {
-    console.error('Attendance statistics error:', error);
+    console.error('[Attendance Statistics] ERROR:', error);
+    console.error('[Attendance Statistics] Error details:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -316,6 +325,9 @@ router.get('/department-wise', authenticateJWT, async (req, res) => {
   try {
     const { role, hod_id: userHodId } = req.user;
     const { period, employee_type } = req.query;
+
+    console.log('[Attendance Department-wise] Request received with params:', { period, employee_type });
+    console.log('[Attendance Department-wise] User role:', role, 'User hod_id:', userHodId);
 
     const dateCondition = (() => {
       if (period === 'today') return 'DATE(a.date) = CURDATE()';
@@ -457,9 +469,13 @@ router.get('/department-wise', authenticateJWT, async (req, res) => {
       };
     });
 
+    console.log('[Attendance Department-wise] Total departments:', departmentData?.length || 0);
+    console.log('[Attendance Department-wise] Sample dept:', departmentData?.[0]);
+
     res.json(departmentData);
   } catch (error) {
-    console.error('Department-wise attendance error:', error);
+    console.error('[Attendance Department-wise] ERROR:', error);
+    console.error('[Attendance Department-wise] Error details:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -475,6 +491,9 @@ router.get('/filtered', authenticateJWT, async (req, res) => {
     }
 
     const { start_date, end_date, hod_id, department, status, period, employee_type } = req.query;
+    
+    console.log('[Attendance Filtered] Request received with params:', { period, hod_id, department, status, employee_type });
+    console.log('[Attendance Filtered] User role:', role, 'User hod_id:', userHodId);
     
     let whereClause = '1=1';
     let params = [];
@@ -550,8 +569,13 @@ router.get('/filtered', authenticateJWT, async (req, res) => {
       ORDER BY a.date DESC, a.check_in DESC
     `, params);
     
+    console.log('[Attendance Filtered] Total records found:', results?.length || 0);
+    console.log('[Attendance Filtered] Sample record:', results?.[0]);
+    
     res.json(results);
   } catch (error) {
+    console.error('[Attendance Filtered] ERROR:', error);
+    console.error('[Attendance Filtered] Error details:', error.message);
     res.status(500).json({ error: error.message });
   }
 });

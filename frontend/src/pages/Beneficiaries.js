@@ -168,7 +168,9 @@ const Beneficiaries = () => {
       document.body.appendChild(a);
       a.click();
       a.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
+      console.error('Export error:', err);
       alert(err.response?.data?.error || err.message || 'Export failed');
     }
   };
@@ -202,7 +204,7 @@ const Beneficiaries = () => {
       {summary && (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
-            <div style={{
+            <div className="stat-card beneficiaries" style={{
               background: 'white',
               padding: '14px',
               borderRadius: '10px',
@@ -210,8 +212,7 @@ const Beneficiaries = () => {
               display: 'flex',
               alignItems: 'flex-start',
               gap: '12px',
-              border: '1px solid rgba(0, 0, 0, 0.04)',
-              borderLeft: '4px solid #1565c0'
+              border: '1px solid rgba(0, 0, 0, 0.04)'
             }}>
               <div style={{
                 width: '40px',
@@ -233,7 +234,7 @@ const Beneficiaries = () => {
               </div>
             </div>
 
-            <div style={{
+            <div className="stat-card hods" style={{
               background: 'white',
               padding: '14px',
               borderRadius: '10px',
@@ -241,8 +242,7 @@ const Beneficiaries = () => {
               display: 'flex',
               alignItems: 'flex-start',
               gap: '12px',
-              border: '1px solid rgba(0, 0, 0, 0.04)',
-              borderLeft: '4px solid #388e3c'
+              border: '1px solid rgba(0, 0, 0, 0.04)'
             }}>
               <div style={{
                 width: '40px',
@@ -264,7 +264,7 @@ const Beneficiaries = () => {
               </div>
             </div>
 
-            <div style={{
+            <div className="stat-card districts" style={{
               background: 'white',
               padding: '14px',
               borderRadius: '10px',
@@ -272,8 +272,7 @@ const Beneficiaries = () => {
               display: 'flex',
               alignItems: 'flex-start',
               gap: '12px',
-              border: '1px solid rgba(0, 0, 0, 0.04)',
-              borderLeft: '4px solid #ff6d00'
+              border: '1px solid rgba(0, 0, 0, 0.04)'
             }}>
               <div style={{
                 width: '40px',
@@ -295,7 +294,7 @@ const Beneficiaries = () => {
               </div>
             </div>
 
-            <div style={{
+            <div className="stat-card mandals" style={{
               background: 'white',
               padding: '14px',
               borderRadius: '10px',
@@ -303,8 +302,7 @@ const Beneficiaries = () => {
               display: 'flex',
               alignItems: 'flex-start',
               gap: '12px',
-              border: '1px solid rgba(0, 0, 0, 0.04)',
-              borderLeft: '4px solid #7b1fa2'
+              border: '1px solid rgba(0, 0, 0, 0.04)'
             }}>
               <div style={{
                 width: '40px',

@@ -126,10 +126,10 @@ const TopHeader = ({ user, onLogout, onToggleSidebar }) => {
         <button className="mobile-sidebar-toggle" aria-label="Toggle sidebar" onClick={() => { if (typeof onToggleSidebar === 'function') onToggleSidebar(); }}>
           <FiMenu size={20} />
         </button>
-        <div className="top-header-logo" onClick={() => navigate('/') } title="Go to Home" style={{ cursor: 'pointer' }}>
+        <div className="top-header-logo" onClick={() => navigate('/dashboard') } title="Go to Home" style={{ cursor: 'pointer' }}>
           <img src={process.env.REACT_APP_HEADER_LOGO || '/tglogo.png'} alt="Logo" style={{ height: 40, borderRadius: 8, marginRight: 12 }} />
           <div>
-            <h1>Telangana Agriculture and Co-opration Department</h1>
+            <h1>Telangana Agriculture and Co-Operation Department</h1>
             <span>Telangana State</span>
           </div>
         </div>

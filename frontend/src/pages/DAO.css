@@ -1,10 +1,14 @@
-/* DAO Page Styles */
+/* ===============================
+   DAO PAGE STYLES
+================================ */
 
 /* Page Container */
 .dao-container {
   padding: 20px;
-  background-color: #f5f5f5;
+  background-color: #F4F7F8;        /* govt light grey */
   min-height: 100vh;
+  color: #1F2D33;
+  font-family: "Segoe UI", Arial, sans-serif;
 }
 
 /* Header Section */
@@ -12,16 +16,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 24px;
 }
 
 .page-title {
-  font-size: 24px;
-  font-weight: bold;
-  color: #333;
+  font-size: 20px;
+  font-weight: 700;
+  color: #355F6B;                   /* teal heading */
 }
 
-/* Action Bar */
+/* ===============================
+   ACTION BAR
+================================ */
 .action-bar {
   display: flex;
   justify-content: space-between;
@@ -34,9 +40,9 @@
 .search-wrapper {
   display: flex;
   align-items: center;
-  background-color: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background-color: #FFFFFF;
+  border: 1px solid #D6DEE2;
+  border-radius: 6px;
   padding: 8px 12px;
   flex: 1;
   min-width: 200px;
@@ -44,7 +50,7 @@
 }
 
 .search-icon {
-  color: #999;
+  color: #7A8A90;
   margin-right: 8px;
   font-size: 16px;
 }
@@ -56,34 +62,38 @@
   padding: 0;
   font-size: 14px;
   background: transparent;
+  color: #1F2D33;
 }
 
 .search-input::placeholder {
-  color: #999;
+  color: #9AA6AC;
 }
 
-/* Button Styles */
+/* ===============================
+   BUTTON STYLES
+================================ */
 .btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
+  padding: 8px 14px;
+  border-radius: 4px;
   cursor: pointer;
   font-weight: 600;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  font-size: 13px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  border: 1px solid #D6DEE2;
+  background: #FFFFFF;
+  color: #1F2D33;
 }
 
 .btn-primary {
-  background-color: #2e7d32;
-  color: white;
+  background-color: #355F6B;       /* teal primary */
+  color: #FFFFFF;
+  border-color: #355F6B;
 }
 
 .btn-primary:hover {
-  background-color: #1b5e20;
-  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+  background-color: #27464F;
 }
 
 .btn-icon {
@@ -92,11 +102,13 @@
   gap: 6px;
 }
 
-/* Table Styles */
+/* ===============================
+   TABLE STYLES
+================================ */
 .table-card {
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: #FFFFFF;
+  border-radius: 6px;
+  border: 1px solid #D6DEE2;
   overflow: hidden;
   margin-bottom: 20px;
 }
@@ -111,56 +123,59 @@
 }
 
 .dao-table thead {
-  background-color: #f5f5f5;
-  border-bottom: 2px solid #e0e0e0;
+  background-color: #F4F7F8;
+  border-bottom: 2px solid #D6DEE2;
 }
 
 .dao-table th {
-  padding: 16px;
+  padding: 12px 14px;
   text-align: left;
-  font-weight: 600;
-  color: #333;
-  font-size: 13px;
+  font-weight: 700;
+  color: #355F6B;                  /* teal header text */
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 }
 
 .dao-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  font-size: 14px;
-  color: #555;
+  padding: 12px 14px;
+  border-bottom: 1px solid #E5E7EB;
+  font-size: 13px;
+  color: #1F2D33;
 }
 
 .dao-table tbody tr:hover {
-  background-color: #fafafa;
+  background-color: #F8FAFB;
 }
 
 .dao-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Status Badges */
+/* ===============================
+   STATUS BADGES
+================================ */
 .status-badge {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: capitalize;
 }
 
 .status-badge.active {
-  background-color: #e8f5e9;
-  color: #1b5e20;
+  background-color: #E6F4EA;
+  color: #166534;
 }
 
 .status-badge.inactive {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: #FDECEA;
+  color: #C62828;
 }
-
-/* Action Cell */
+/* ===============================
+   ACTION CELL
+================================ */
 .action-cell {
   display: flex;
   gap: 10px;
@@ -169,55 +184,59 @@
 
 .action-btn {
   padding: 6px 12px;
-  border: none;
-  border-radius: 6px;
+  border: 1px solid #D6DEE2;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  background: #FFFFFF;
 }
 
+/* Edit */
 .edit-btn {
-  background-color: #1976d2;
-  color: white;
+  color: #355F6B;
 }
 
 .edit-btn:hover {
-  background-color: #0d47a1;
+  background: #E7F1F3;
+  border-color: #355F6B;
 }
 
+/* Delete */
 .delete-btn {
-  background-color: #d32f2f;
-  color: white;
+  color: #C62828;
 }
 
 .delete-btn:hover {
-  background-color: #b71c1c;
+  background: #FDECEA;
+  border-color: #C62828;
 }
 
-/* Empty State */
+/* ===============================
+   EMPTY STATE
+================================ */
 .empty-cell {
   text-align: center;
   padding: 40px 20px;
-  color: #999;
+  color: #7A8A90;
 }
 
 .empty-cell p {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
 }
 
-/* Modal Styles */
+/* ===============================
+   MODAL STYLES
+================================ */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -225,26 +244,28 @@
 }
 
 .modal-content {
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  background: #FFFFFF;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid #D6DEE2;
   max-width: 500px;
   width: 90%;
 }
 
 .modal-title {
-  margin-bottom: 20px;
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #355F6B;
 }
 
-/* Form Styles */
+/* ===============================
+   FORM STYLES
+================================ */
 .dao-form {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 14px;
 }
 
 .form-group {
@@ -255,33 +276,37 @@
 
 .form-group label {
   display: block;
-  font-weight: 500;
-  font-size: 14px;
-  color: #333;
+  font-weight: 600;
+  font-size: 13px;
+  color: #355F6B;
 }
 
 .form-input {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid #D6DEE2;
+  border-radius: 4px;
   box-sizing: border-box;
   font-size: 14px;
   font-family: inherit;
+  background: #FFFFFF;
+  color: #1F2D33;
   transition: border-color 0.2s ease;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #2e7d32;
-  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+  border-color: #355F6B;
+  box-shadow: 0 0 0 2px rgba(53, 95, 107, 0.12);
 }
 
 .form-input::placeholder {
-  color: #999;
+  color: #9AA6AC;
 }
 
-/* Modal Buttons */
+/* ===============================
+   MODAL BUTTONS
+================================ */
 .modal-buttons {
   display: flex;
   gap: 10px;
@@ -292,48 +317,50 @@
 .btn-save {
   flex: 1;
   padding: 10px;
-  background-color: #2e7d32;
-  color: white;
+  background-color: #355F6B;       /* teal primary */
+  color: #FFFFFF;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 700;
   transition: background-color 0.2s ease;
 }
 
 .btn-save:hover {
-  background-color: #1b5e20;
+  background-color: #27464F;
 }
 
 .btn-cancel {
   flex: 1;
   padding: 10px;
-  background-color: #999;
-  color: white;
+  background-color: #7A8A90;       /* neutral govt grey */
+  color: #FFFFFF;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 700;
   transition: background-color 0.2s ease;
 }
 
 .btn-cancel:hover {
-  background-color: #666;
+  background-color: #5E6E73;
 }
 
-/* Pagination */
+/* ===============================
+   PAGINATION
+================================ */
 .pagination-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  background-color: #f5f5f5;
-  border-top: 1px solid #e0e0e0;
+  padding: 12px 16px;
+  background-color: #F1F5F7;
+  border-top: 1px solid #D6DEE2;
 }
 
 .pagination-info {
   font-size: 13px;
-  color: #666;
+  color: #5E6E73;
 }
 
 .pagination-buttons {
@@ -342,19 +369,20 @@
 }
 
 .pagination-btn {
-  padding: 8px 12px;
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+  padding: 6px 10px;
+  background-color: #FFFFFF;
+  border: 1px solid #D6DEE2;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
-  transition: all 0.2s ease;
+  font-weight: 600;
+  color: #1F2D33;
+  transition: background 0.2s ease;
 }
 
 .pagination-btn:hover:not(:disabled) {
-  background-color: #2e7d32;
-  color: white;
-  border-color: #2e7d32;
+  background-color: #E7F1F3;
+  border-color: #355F6B;
 }
 
 .pagination-btn:disabled {
@@ -362,7 +390,9 @@
   cursor: not-allowed;
 }
 
-/* Responsive Design */
+/* ===============================
+   RESPONSIVE DESIGN
+================================ */
 @media (max-width: 768px) {
   .dao-container {
     padding: 12px;
@@ -390,7 +420,7 @@
 
   .dao-table th,
   .dao-table td {
-    padding: 12px 8px;
+    padding: 10px 8px;
     font-size: 12px;
   }
 

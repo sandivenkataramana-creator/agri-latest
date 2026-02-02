@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import appConfig from '../config/appConfig';
 import './DeletionLogs.css';
 
 const DeletionLogs = () => {
@@ -25,7 +26,7 @@ const DeletionLogs = () => {
     try {
       setLoading(true);
       const type = filterType && filterType !== 'all' ? `?type=${encodeURIComponent(filterType)}` : '';
-      const response = await fetch(`http://localhost:5000/api/uploads/deletion-logs${type}`, {
+      const response = await fetch(`${appConfig.apiBaseUrl}/uploads/deletion-logs${type}`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }

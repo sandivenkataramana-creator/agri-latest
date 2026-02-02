@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiDownload, FiTrash2, FiEye, FiGrid, FiList } from 'react-icons/fi';
+import appConfig from '../config/appConfig';
 import './UploadedFiles.css';
 
 const UploadedFiles = () => {
@@ -23,7 +24,7 @@ const UploadedFiles = () => {
   const fetchFiles = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/uploads/all-files?type=${filterType}`, {
+      const response = await fetch(`${appConfig.apiBaseUrl}/uploads/all-files?type=${filterType}`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -41,7 +42,7 @@ const UploadedFiles = () => {
 
   const handleDownload = async (fileId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/uploads/download/${fileId}`, {
+      const response = await fetch(`${appConfig.apiBaseUrl}/uploads/download/${fileId}`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }

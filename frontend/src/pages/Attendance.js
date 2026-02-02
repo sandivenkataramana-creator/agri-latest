@@ -144,7 +144,7 @@ const Attendance = () => {
         }
       });
 
-      console.log('Fetching attendance with params:', params);
+      console.log('[Attendance] Fetching attendance with params:', params);
 
       const [attendanceRes, statsRes, deptRes] = await Promise.all([
         getAttendanceFiltered(params),
@@ -152,12 +152,22 @@ const Attendance = () => {
         getDepartmentWiseAttendance(params)
       ]);
 
+      console.log('[Attendance] Panel 1 - Filtered Attendance Response:', attendanceRes);
+      console.log('[Attendance] Panel 2 - Statistics Response:', statsRes);
+      console.log('[Attendance] Panel 3 - Department Wise Response:', deptRes);
+
       setAttendance(attendanceRes.data || []);
       setStatistics(statsRes.data || null);
       setDepartmentData(deptRes.data || []);
+      
+      console.log('[Attendance] Panel 1 - Attendance records set:', attendanceRes.data?.length || 0);
+      console.log('[Attendance] Panel 2 - Statistics set:', statsRes.data);
+      console.log('[Attendance] Panel 3 - Department data set:', deptRes.data?.length || 0);
+      
       setError(null);
     } catch (err) {
-      console.error('Error fetching attendance data:', err);
+      console.error('[Attendance] Error fetching attendance data:', err);
+      console.error('[Attendance] Error details:', err.response?.data || err.message);
       setError('Failed to fetch attendance data. Please make sure the server is running.');
     } finally {
       setLoading(false);
