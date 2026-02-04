@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ListModal from '../components/ListModal';
-import { Pie, Bar, Doughnut } from 'react-chartjs-2';
+import { Pie, Bar, Doughnut, Line } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import * as XLSX from 'xlsx';
 import { FiUsers, FiCheckCircle, FiActivity, FiPieChart, FiFilter, FiBarChart2 } from 'react-icons/fi';
@@ -154,6 +154,45 @@ const Dashboard = () => {
   const [schemesDetails, setSchemesDetails] = useState([]);
   const [budgetDetails, setBudgetDetails] = useState([]);
   const [attendanceDetails, setAttendanceDetails] = useState([]);
+  
+  // Scheme wise view toggle for schemes chart
+  const [isSchemeWiseView, setIsSchemeWiseView] = useState(false);
+  // Budget breakdown view toggle for budget chart
+  const [isBudgetBreakdownView, setIsBudgetBreakdownView] = useState(false);
+  // HOD Revenue/Budget view toggle
+  const [isHodBudgetView, setIsHodBudgetView] = useState(false);
+  
+  // Scheme Insights Modal
+  const [schemeInsightsOpen, setSchemeInsightsOpen] = useState(false);
+  const [schemeInsightsFilters, setSchemeInsightsFilters] = useState({
+    department: '',
+    year: '2025-26',
+    schemeStatus: '',
+    hodId: '',
+    chartView: 'status'
+  });
+  const [filteredSchemeInsights, setFilteredSchemeInsights] = useState([]);
+
+  // Attendance Insights Modal
+  const [attendanceInsightsOpen, setAttendanceInsightsOpen] = useState(false);
+  const [attendanceInsightsFilters, setAttendanceInsightsFilters] = useState({
+    period: 'today',
+    hodId: '',
+    status: ''
+  });
+  const [attendanceInsightData, setAttendanceInsightData] = useState([]);
+
+  // HOD Insights Modal
+  const [hodInsightsOpen, setHodInsightsOpen] = useState(false);
+  const [hodInsightsChartType, setHodInsightsChartType] = useState('revenue'); // revenue, budget, schemes
+
+  // Budget Insights Modal
+  const [budgetInsightsOpen, setBudgetInsightsOpen] = useState(false);
+  const [budgetInsightsFilters, setBudgetInsightsFilters] = useState({
+    chartType: 'summary', // summary, breakdown, byHod
+    year: '2025-26',
+    status: ''
+  });
 
   useEffect(() => {
     // initial load
@@ -240,10 +279,14 @@ const Dashboard = () => {
     // Fetch only attendance-related data to avoid full page refresh
     const fetchAttendanceData = async () => {
       try {
+        console.log('[Dashboard] Fetching attendance data with params:', params);
         const [statsRes, attendanceRes] = await Promise.all([
           getDashboardStats(params),
           getAttendanceByHOD(params)
         ]);
+        
+        console.log('[Dashboard] Attendance API Response:', attendanceRes);
+        console.log('[Dashboard] Stats API Response:', statsRes);
         
         // Update only attendance-related state
         setStats(prevStats => ({
@@ -258,9 +301,14 @@ const Dashboard = () => {
           }
         }));
         
+        console.log('[Dashboard] Stats Response todayAttendance:', statsRes.data.todayAttendance);
+        console.log('[Dashboard] Updated stats.todayAttendance:', statsRes.data?.todayAttendance);
+        
         setAttendanceByHOD(attendanceRes.data || []);
+        console.log('[Dashboard] Attendance state updated:', attendanceRes.data);
       } catch (err) {
-        console.error('Error fetching attendance data:', err);
+        console.error('[Dashboard] Error fetching attendance data:', err);
+        console.error('[Dashboard] Error details:', err.response?.data || err.message);
       }
     };
     
@@ -354,6 +402,9 @@ const Dashboard = () => {
       ]);
 
       // Set stats
+      console.log('[Dashboard] Stats response:', statsRes.data);
+      console.log('[Dashboard] Today Attendance from stats:', statsRes.data.todayAttendance);
+      
       setStats({
         totalHods: statsRes.data.totalHods || 0,
         activeHods: statsRes.data.activeHods || 0,
@@ -1260,21 +1311,28 @@ if (!isNaN(safeTotal)) {
   // Schemes HOD wise - Combined Bar and Line Chart Data
   const filteredSchemesData = getFilteredSchemesData();
   
-  // When HOD is selected via chart filter, show scheme-wise data with status colors
-  const isSchemeWiseView = chartFilters.schemes.hod_id && schemesDetails.length > 0;
+  // When HOD is selected via chart filter and scheme wise view is enabled, show scheme-wise data with status colors
+  const showSchemeWiseData = isSchemeWiseView && chartFilters.schemes.hod_id && schemesDetails.length > 0;
   
-  const schemesHODBarLineData = isSchemeWiseView ? {
+  const schemesHODBarLineData = showSchemeWiseData ? {
     labels: schemesDetails.map(item => item.name?.split(' ').slice(0, 3).join(' ') || 'Unknown'),
     datasets: [
       {
-        type: 'bar',
+        type: 'line',
         label: 'Scheme Budget',
-        data: schemesDetails.map(item => (item.total_budget || 0) / 100000), // In Lakhs
-        backgroundColor: schemesDetails.map(item => getStatusColor(item.status)),
-        borderRadius: 6,
-        borderSkipped: false,
+        data: schemesDetails.map(item => (item.total_budget || 0) / 100000),
+        borderColor: '#1565C0',
+        backgroundColor: 'rgba(21, 101, 192, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#1565C0',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        tension: 0.4,
+        fill: true,
         yAxisID: 'y',
-        order: 2
+        order: 1
       },
       {
         type: 'line',
@@ -1290,31 +1348,29 @@ if (!isNaN(safeTotal)) {
         pointHoverRadius: 8,
         tension: 0.4,
         fill: true,
-        yAxisID: 'y1',
-        order: 1
+        yAxisID: 'y',
+        order: 2
       }
     ]
   } : {
     labels: filteredSchemesData.map(item => item.hod_name?.split(' ').slice(0, 2).join(' ') || 'Unknown'),
     datasets: [
       {
-        type: 'bar',
+        type: 'line',
         label: 'Scheme Count',
         data: filteredSchemesData.map(item => item.scheme_count || 0),
-        backgroundColor: [
-          'rgba(21, 101, 192, 0.8)',
-          'rgba(46, 125, 50, 0.8)',
-          'rgba(239, 108, 0, 0.8)',
-          'rgba(123, 31, 162, 0.8)',
-          'rgba(198, 40, 40, 0.8)',
-          'rgba(0, 131, 143, 0.8)',
-          'rgba(255, 215, 0, 0.8)',
-          'rgba(233, 30, 99, 0.8)'
-        ],
-        borderRadius: 6,
-        borderSkipped: false,
+        borderColor: '#1565C0',
+        backgroundColor: 'rgba(21, 101, 192, 0.1)',
+        borderWidth: 3,
+        pointBackgroundColor: '#1565C0',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        tension: 0.4,
+        fill: true,
         yAxisID: 'y',
-        order: 2
+        order: 1
       },
       {
         type: 'line',
@@ -1330,8 +1386,8 @@ if (!isNaN(safeTotal)) {
         pointHoverRadius: 8,
         tension: 0.4,
         fill: true,
-        yAxisID: 'y1',
-        order: 1
+        yAxisID: 'y',
+        order: 2
       }
     ]
   };
@@ -2238,7 +2294,7 @@ if (!isNaN(safeTotal)) {
   const useHorizontalLabels = filteredSchemesList.length <= 5;
   
   // Dynamic chart height based on number of schemes
-  const schemesChartHeight = filteredSchemesList.length > 10 ? '320px' : (filteredSchemesList.length <= 5 ? '220px' : '260px');
+  const schemesChartHeight = filteredSchemesList.length > 10 ? '260px' : (filteredSchemesList.length <= 5 ? '220px' : '240px');
 
   const schemesChartOptions = {
     responsive: true,
@@ -2593,168 +2649,429 @@ if (!isNaN(safeTotal)) {
       {/* Stats Cards */}
      <div className="dashboard-top-row">
   <div className="dashboard-top-left">
-    <div className="dashboard-mini-tiles">
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(5, 1fr)',
+      gap: '12px',
+      marginBottom: '20px'
+    }}>
 
       <div
-        className="dashboard-mini-tile"
+        style={{
+          backgroundColor: '#fff',
+          padding: '12px 16px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          transition: 'all 0.2s',
+          border: '1px solid #f0f0f0'
+        }}
         onClick={() => navigate('/hods')}
+        onMouseOver={(e) => {
+          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+          e.currentTarget.style.borderColor = '#e0e0e0';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+          e.currentTarget.style.borderColor = '#f0f0f0';
+        }}
       >
-        <div className="dashboard-tile-content">
-          <div className="dashboard-tile-label">Total</div>
-          <div className="dashboard-tile-value">
+        <div style={{ minWidth: '60px', fontWeight: 'bold' }}>
+          <div style={{ fontSize: '12px', color: '#666' }}>TOTAL</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#1565c0' }}>
             {(stats.totalHods || 0) + (stats.totalStaff || 0)}
           </div>
-          <div className="dashboard-tile-sub">HODs: {totalHodCount} Staff: {totalStaffCount}</div>
         </div>
-        <div className="dashboard-tile-icon" aria-hidden="true">
+        <div style={{ fontSize: '11px', color: '#999', fontWeight: '600', marginLeft: '8px' }}>
+          HODs: {totalHodCount} Staff: {totalStaffCount}
+        </div>
+        <div style={{ marginLeft: 'auto', fontSize: '18px', color: '#9c27b0' }}>
           <FiUsers />
         </div>
       </div>
 
       <div
-        className="dashboard-mini-tile"
+        style={{
+          backgroundColor: '#fff',
+          padding: '12px 16px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          transition: 'all 0.2s',
+          border: '1px solid #f0f0f0'
+        }}
         onClick={() => navigate('/attendance')}
+        onMouseOver={(e) => {
+          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+          e.currentTarget.style.borderColor = '#e0e0e0';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+          e.currentTarget.style.borderColor = '#f0f0f0';
+        }}
       >
-        <div className="dashboard-tile-content">
-          <div className="dashboard-tile-label">Total Attendance</div>
-          <div className="dashboard-tile-value">
+        <div style={{ minWidth: '60px', fontWeight: 'bold' }}>
+          <div style={{ fontSize: '12px', color: '#666' }}>TOTAL ATTENDANCE</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#2e7d32' }}>
             {stats.todayAttendance?.total || 0}
           </div>
-          <div className="dashboard-tile-sub">
-            {stats.todayAttendance?.present || 0} Present
-          </div>
         </div>
-        <div className="dashboard-tile-icon" aria-hidden="true">
+        <div style={{ fontSize: '11px', color: '#999', fontWeight: '600', marginLeft: '8px' }}>
+          {stats.todayAttendance?.present || 0} Present
+        </div>
+        <div style={{ marginLeft: 'auto', fontSize: '18px', color: '#2e7d32' }}>
           <FiCheckCircle />
         </div>
       </div>
 
       <div
-        className="dashboard-mini-tile"
+        style={{
+          backgroundColor: '#fff',
+          padding: '12px 16px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          transition: 'all 0.2s',
+          border: '1px solid #f0f0f0'
+        }}
         onClick={() => navigate('/budget')}
+        onMouseOver={(e) => {
+          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+          e.currentTarget.style.borderColor = '#e0e0e0';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+          e.currentTarget.style.borderColor = '#f0f0f0';
+        }}
       >
-        <div className="dashboard-tile-content">
-          <div className="dashboard-tile-label">Budget</div>
-          <div className="dashboard-tile-value">
+        <div style={{ minWidth: '60px', fontWeight: 'bold' }}>
+          <div style={{ fontSize: '12px', color: '#666' }}>BUDGET</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#1565c0' }}>
             {formatCurrency(stats.totalBudget || 0)}
           </div>
-          <div className="dashboard-tile-sub">
-            {formatCurrency(stats.utilizedBudget || 0)} Used
-          </div>
         </div>
-        <div className="dashboard-tile-icon" aria-hidden="true">
+        <div style={{ fontSize: '11px', color: '#999', fontWeight: '600', marginLeft: '8px' }}>
+          {formatCurrency(stats.utilizedBudget || 0)} Used
+        </div>
+        <div style={{ marginLeft: 'auto', fontSize: '18px', color: '#ff6f00' }}>
           <BiWallet />
         </div>
       </div>
 
       <div
-        className="dashboard-mini-tile"
+        style={{
+          backgroundColor: '#fff',
+          padding: '12px 16px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          transition: 'all 0.2s',
+          border: '1px solid #f0f0f0'
+        }}
         onClick={() => navigate('/hods')}
+        onMouseOver={(e) => {
+          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+          e.currentTarget.style.borderColor = '#e0e0e0';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+          e.currentTarget.style.borderColor = '#f0f0f0';
+        }}
       >
-        <div className="dashboard-tile-content">
-          <div className="dashboard-tile-label">Total HODs</div>
-          <div className="dashboard-tile-value">
+        <div style={{ minWidth: '60px', fontWeight: 'bold' }}>
+          <div style={{ fontSize: '12px', color: '#666' }}>TOTAL HODS</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#1565c0' }}>
             {stats.totalHods || 0}
           </div>
-          <div className="dashboard-tile-sub">
-            {stats.activeHods || 0} Active
-          </div>
         </div>
-        <div className="dashboard-tile-icon" aria-hidden="true">
+        <div style={{ fontSize: '11px', color: '#999', fontWeight: '600', marginLeft: '8px' }}>
+          {stats.activeHods || 0} Active
+        </div>
+        <div style={{ marginLeft: 'auto', fontSize: '18px', color: '#1976d2' }}>
           <FiUsers />
         </div>
       </div>
 
       <div
-        className="dashboard-mini-tile"
+        style={{
+          backgroundColor: '#fff',
+          padding: '12px 16px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          transition: 'all 0.2s',
+          border: '1px solid #f0f0f0'
+        }}
         onClick={() => navigate('/flagship-programmes')}
+        onMouseOver={(e) => {
+          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+          e.currentTarget.style.borderColor = '#e0e0e0';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+          e.currentTarget.style.borderColor = '#f0f0f0';
+        }}
       >
-        <div className="dashboard-tile-content">
-          <div className="dashboard-tile-label">Flagship Programmes</div>
-          <div className="dashboard-tile-value">
+        <div style={{ minWidth: '60px', fontWeight: 'bold' }}>
+          <div style={{ fontSize: '12px', color: '#666' }}>FLAGSHIP PROGRAMMES</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#1565c0' }}>
             {stats.totalPrograms || 0}
           </div>
-          <div className="dashboard-tile-sub">
-            {stats.activePrograms || 0} Active
-          </div>
         </div>
-        <div className="dashboard-tile-icon" aria-hidden="true">
+        <div style={{ fontSize: '11px', color: '#999', fontWeight: '600', marginLeft: '8px' }}>
+          {stats.activePrograms || 0} Active
+        </div>
+        <div style={{ marginLeft: 'auto', fontSize: '18px', color: '#7b1fa2' }}>
           <FiActivity />
         </div>
       </div>
 
     </div>
+
+    {/* Additional Cards Row */}
+    <div style={{ 
+      display: 'flex', 
+      gap: '10px', 
+      marginTop: '14px', 
+      justifyContent: 'center',
+      maxWidth: '600px',
+      margin: '14px auto 0'
+    }}>
+      
+      <div
+        style={{
+          backgroundColor: '#e8f5e9',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          fontWeight: '600',
+          color: '#333',
+          transition: 'all 0.2s'
+        }}
+        onClick={() => {
+          setSchemeInsightsOpen(false);
+          setHodInsightsOpen(false);
+          setBudgetInsightsOpen(false);
+          setAttendanceInsightsOpen(true);
+        }}
+        onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'}
+        onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'}
+      >
+        <FiCheckCircle size={16} style={{ color: '#4CAF50' }} />
+        <span>ATTENDANCE</span>
+      </div>
+
+      <div
+        style={{
+          backgroundColor: '#e8f5e9',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          fontWeight: '600',
+          color: '#333',
+          transition: 'all 0.2s'
+        }}
+        onClick={() => {
+          setSchemeInsightsOpen(false);
+          setAttendanceInsightsOpen(false);
+          setBudgetInsightsOpen(false);
+          setHodInsightsOpen(true);
+        }}
+        onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'}
+        onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'}
+      >
+        <FiUsers size={16} style={{ color: '#2196F3' }} />
+        <span>HOD'S</span>
+      </div>
+
+      <div
+        style={{
+          backgroundColor: '#e8f5e9',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          fontWeight: '600',
+          color: '#333',
+          transition: 'all 0.2s'
+        }}
+        onClick={() => {
+          setAttendanceInsightsOpen(false);
+          setHodInsightsOpen(false);
+          setBudgetInsightsOpen(false);
+          setSchemeInsightsOpen(true);
+        }}
+        onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'}
+        onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'}
+      >
+        <FiPieChart size={16} style={{ color: '#FF9800' }} />
+        <span>SCHEMES</span>
+      </div>
+
+      <div
+        style={{
+          backgroundColor: '#e8f5e9',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          fontWeight: '600',
+          color: '#333',
+          transition: 'all 0.2s'
+        }}
+        onClick={() => {
+          setSchemeInsightsOpen(false);
+          setAttendanceInsightsOpen(false);
+          setHodInsightsOpen(false);
+          setBudgetInsightsOpen(true);
+        }}
+        onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)'}
+        onMouseOut={(e) => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'}
+      >
+        <BiWallet size={16} style={{ color: '#9C27B0' }} />
+        <span>BUDGET</span>
+      </div>
+
+    </div>
+
   </div>
 </div>
 
       
       {/* Scrollable Charts Container */}
+      {!schemeInsightsOpen && !attendanceInsightsOpen && !hodInsightsOpen && !budgetInsightsOpen && (
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
       {/* Top Summary Charts Grid - 2x2 Layout */}
-      <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+      <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1px' }}>
         
         {/* Schemes Summary - stacked bar with active/inactive and per-scheme list for total view */}
-        <div className="chart-card" style={{ gridColumn: '1 / 2', backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>
-                Schemes Summary (FY {selectedSchemesYear || schemesSummary.year})
+        <div className="chart-card" style={{ gridColumn: '1 / 2', backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '288px', display: 'flex', flexDirection: 'column' }}>
+          <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '13px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>
+                Schemes {isSchemeWiseView ? '(HOD wise)' : '(FY ' + (selectedSchemesYear || schemesSummary.year) + ')'}
               </h3>
-              {/* <span style={{ padding: '4px 8px', backgroundColor: '#e8f5e9', color: '#1b5e20', borderRadius: '999px', fontSize: '11px', fontWeight: 700 }}>{totalSchemeCount} {schemesHODFilter ? 'Schemes' : 'Total'}</span> */}
+              {isSchemeWiseView && chartFilters.schemes.hod_id && (
+                <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>
+                  - {allHODs.find(h => h.id === parseInt(chartFilters.schemes.hod_id))?.name}
+                </span>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <select 
-                value={schemesHODFilter}
-                onChange={(e) => setSchemesHODFilter(e.target.value)}
+                value={isSchemeWiseView ? 'hodwise' : 'summary'}
+                onChange={(e) => setIsSchemeWiseView(e.target.value === 'hodwise')}
                 style={{
-                  padding: '6px 8px',
-                  fontSize: '12px',
+                  padding: '5px 6px',
+                  fontSize: '11px',
                   border: '1px solid #d0d0d0',
-                  borderRadius: '4px',
+                  borderRadius: '3px',
                   backgroundColor: '#fff',
                   color: '#333',
                   cursor: 'pointer',
                   outline: 'none',
-                  maxWidth: '150px'
+                  maxWidth: '120px'
                 }}
               >
-                <option value="">All HODs ({totalSchemeCount || 0} schemes)</option>
-                {allHODs.map((hod) => (
-                  <option key={hod.id} value={hod.id}>
-                    {hod.name}({schemesHODFilter ? filteredSchemesList.filter(s => {
-                      const schemeHODName = s.hod_name || s.hod || '';
-                      return schemeHODName.toLowerCase() === hod.name.toLowerCase();
-                    }).length : hod.scheme_count})
-                  </option>
-                ))}
+                <option value="summary">Summary</option>
+                <option value="hodwise">HOD wise</option>
               </select>
-              <select 
-                value={selectedSchemeType}
-                onChange={(e) => setSelectedSchemeType(e.target.value)}
-                style={{
-                  padding: '6px 8px',
-                  fontSize: '12px',
-                  border: '1px solid #d0d0d0',
-                  borderRadius: '4px',
-                  backgroundColor: '#fff',
-                  color: '#333',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                <option value="all">Total Schemes</option>
-                <option value="split">State vs Central</option>
-              </select>
+              {!isSchemeWiseView && (
+                <>
+                  <select 
+                    value={schemesHODFilter}
+                    onChange={(e) => setSchemesHODFilter(e.target.value)}
+                    style={{
+                      padding: '5px 6px',
+                      fontSize: '11px',
+                      border: '1px solid #d0d0d0',
+                      borderRadius: '3px',
+                      backgroundColor: '#fff',
+                      color: '#333',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      maxWidth: '130px'
+                    }}
+                  >
+                    <option value="">All HODs</option>
+                    {allHODs.map((hod) => (
+                      <option key={hod.id} value={hod.id}>
+                        {hod.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select 
+                    value={selectedSchemeType}
+                    onChange={(e) => setSelectedSchemeType(e.target.value)}
+                    style={{
+                      padding: '5px 6px',
+                      fontSize: '11px',
+                      border: '1px solid #d0d0d0',
+                      borderRadius: '3px',
+                      backgroundColor: '#fff',
+                      color: '#333',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="all">Total</option>
+                    <option value="split">State vs Central</option>
+                  </select>
+                </>
+              )}
+              {isSchemeWiseView && (
+                <div style={{ position: 'relative' }}>
+                  <FiFilter 
+                    style={{ cursor: 'pointer', color: chartFilters.schemes.hod_id ? '#2e7d32' : '#666', fontSize: '18px' }} 
+                    title="Filter" 
+                    onClick={(e) => { e.stopPropagation(); toggleFilterDropdown('schemes'); }}
+                  />
+                  {renderFilterDropdown('schemes')}
+                </div>
+              )}
               <select 
                 value={schemesYearFilter || schemesSummary.year} 
                 onChange={(e) => {
                   setSchemesYearFilter(e.target.value);
                 }}
                 style={{
-                  padding: '6px 8px',
-                  fontSize: '12px',
+                  padding: '5px 6px',
+                  fontSize: '11px',
                   border: '1px solid #d0d0d0',
-                  borderRadius: '4px',
+                  borderRadius: '3px',
                   backgroundColor: '#fff',
                   color: '#333',
                   cursor: 'pointer',
@@ -2768,40 +3085,50 @@ if (!isNaN(safeTotal)) {
               </select>
             </div>
           </div>
-          <div className="chart-card-body" style={{ height: schemesChartHeight, padding: '8px 14px 4px 14px' }}>
+          <div className="chart-card-body" style={{ height: schemesChartHeight, padding: '8px 12px 4px 12px' }}>
             <div style={{ height: '100%' }}>
-              <Bar data={schemesChartData} options={schemesChartOptions} plugins={[ChartDataLabels]} />
+              {isSchemeWiseView ? (
+                <Line data={schemesHODBarLineData} options={schemesBarLineOptions} />
+              ) : (
+                <Bar data={schemesChartData} options={schemesChartOptions} plugins={[ChartDataLabels]} />
+              )}
             </div>
-            {isTotalSchemesView && filteredSchemesList.length === 0 && (
+            {isTotalSchemesView && filteredSchemesList.length === 0 && !isSchemeWiseView && (
               <div style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>No schemes found for this year.</div>
             )}
           </div>
         </div>
-        {/* Chart 1: HOD Revenue - Donut Chart with center text */}
-        <div className="chart-card">
+        {/* Chart 1: HOD Revenue / Budget by HOD */}
+        <div className="chart-card" style={{ height: '288px', display: 'flex', flexDirection: 'column' }}>
           <div className="chart-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3><FiPieChart /> HOD Revenue {chartFilters.revenue.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.revenue.hod_id))?.name})</span>}</h3>
-            <div className="chart-filter-container" style={{ position: 'relative' }}>
-              <FiFilter 
-                style={{ cursor: 'pointer', color: chartFilters.revenue.hod_id ? '#2e7d32' : '#666', fontSize: '18px' }} 
-                title="Filter" 
-                onClick={(e) => { e.stopPropagation(); toggleFilterDropdown('revenue'); }}
-              />
-              {renderFilterDropdown('revenue')}
-            </div>
-          </div>
-          <div className="chart-card-body">
-            <div className="chart-container" style={{ cursor: 'pointer', height: '240px', position: 'relative' }}>
-              <Doughnut data={hodRevenueChartData} options={hodRevenuePieOptions} plugins={[ChartDataLabels, revenueCenterTextPlugin]} />
-            </div>
-          </div>
-        </div>
-
-       
-
-           <div className="chart-card" style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', gridColumn: '1 / -1', border: '1px solid #d0d0d0', overflow: 'hidden' }}>
-              <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>Budget by HOD (₹ Cr)</h3>
+            <h3>
+              {isHodBudgetView ? (
+                'Budget by HOD (₹ Cr)'
+              ) : (
+                <>
+                  <FiPieChart /> HOD Revenue {chartFilters.revenue.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.revenue.hod_id))?.name})</span>}
+                </>
+              )}
+            </h3>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <select
+                value={isHodBudgetView ? 'budget' : 'revenue'}
+                onChange={(e) => setIsHodBudgetView(e.target.value === 'budget')}
+                style={{
+                  padding: '6px 8px',
+                  fontSize: '12px',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  backgroundColor: '#fff',
+                  color: '#333',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="revenue">Revenue</option>
+                <option value="budget">Budget by HOD</option>
+              </select>
+              {isHodBudgetView ? (
                 <select
                   value={budgetByHODYearFilter || budgetSummary.year}
                   onChange={(e) => {
@@ -2823,57 +3150,64 @@ if (!isNaN(safeTotal)) {
                   <option value="2026-27">2026-27</option>
                   <option value="2027-28">2027-28</option>
                 </select>
-              </div>
-              <div style={{ height: 'auto', maxHeight: '340px', overflowY: 'auto', overflowX: 'hidden', padding: '12px 16px' }}>
-                <div className="chart-box large" style={{ height: '300px', minHeight: '300px' }}>
-                  <Bar data={budgetHODStackedBarData} options={budgetHODStackedBarOptions} plugins={[ChartDataLabels]} />
-                </div>
-              </div>
-            </div>
-
-                   {/* Chart 2: Schemes (HOD wise) - Bar + Line Combined Chart */}
-        <div className="chart-card">
-          <div className="chart-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <h3><FiBarChart2 /> {isSchemeWiseView ? 'Schemes (Scheme wise)' : 'Schemes (HOD wise)'} {chartFilters.schemes.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.schemes.hod_id))?.name})</span>}</h3>
-              {isSchemeWiseView && (
-                <div style={{ display: 'flex', gap: '10px', fontSize: '11px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(76, 175, 80, 0.8)' }}></span> Completed
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(255, 193, 7, 0.8)' }}></span> Planned
-                  </span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: 'rgba(33, 150, 243, 0.8)' }}></span> Active
-                  </span>
+              ) : (
+                <div className="chart-filter-container" style={{ position: 'relative' }}>
+                  <FiFilter 
+                    style={{ cursor: 'pointer', color: chartFilters.revenue.hod_id ? '#2e7d32' : '#666', fontSize: '18px' }} 
+                    title="Filter" 
+                    onClick={(e) => { e.stopPropagation(); toggleFilterDropdown('revenue'); }}
+                  />
+                  {renderFilterDropdown('revenue')}
                 </div>
               )}
             </div>
-            <div className="chart-filter-container" style={{ position: 'relative' }}>
-              <FiFilter 
-                style={{ cursor: 'pointer', color: chartFilters.schemes.hod_id ? '#2e7d32' : '#666', fontSize: '18px' }} 
-                title="Filter" 
-                onClick={(e) => { e.stopPropagation(); toggleFilterDropdown('schemes'); }}
-              />
-              {renderFilterDropdown('schemes')}
-            </div>
           </div>
           <div className="chart-card-body">
-            <div className="chart-container" style={{ cursor: 'pointer', height: '240px' }}>
-              <Bar data={schemesHODBarLineData} options={schemesBarLineOptions} />
-            </div>
+            {isHodBudgetView ? (
+              <div style={{ height: 'auto', padding: '10px 12px' }}>
+                <div className="chart-box large" style={{ height: '216px', minHeight: '216px' }}>
+                  <Bar data={budgetHODStackedBarData} options={budgetHODStackedBarOptions} plugins={[ChartDataLabels]} />
+                </div>
+              </div>
+            ) : (
+              <div className="chart-container" style={{ cursor: 'pointer', height: '216px', position: 'relative' }}>
+                <Doughnut data={hodRevenueChartData} options={hodRevenuePieOptions} plugins={[ChartDataLabels, revenueCenterTextPlugin]} />
+              </div>
+            )}
           </div>
         </div>
-        {/* Budget Summary - Vertical Bar with View Filter */}
-        <div className="chart-card" style={{ backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+
+       
+        {/* Budget Summary/Breakdown - Vertical Bar with View Filter */}
+        <div className="chart-card" style={{ backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '288px', display: 'flex', flexDirection: 'column' }}>
           <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Budget Summary (FY {budgetSummaryYearFilter || budgetSummary.year})</h3>
+            <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Budget {isBudgetBreakdownView ? '(Breakdown)' : '(Summary)'} (FY {isBudgetBreakdownView ? budgetBreakdownYearFilter || budgetBreakdown.year : budgetSummaryYearFilter || budgetSummary.year})</h3>
             <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+              <select 
+                value={isBudgetBreakdownView ? 'breakdown' : 'summary'}
+                onChange={(e) => setIsBudgetBreakdownView(e.target.value === 'breakdown')}
+                style={{
+                  padding: '6px 8px',
+                  fontSize: '12px',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  backgroundColor: '#fff',
+                  color: '#333',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                <option value="summary">Summary</option>
+                <option value="breakdown">Breakdown</option>
+              </select>
               <select
-                value={budgetSummaryYearFilter || budgetSummary.year}
+                value={isBudgetBreakdownView ? budgetBreakdownYearFilter || budgetBreakdown.year : budgetSummaryYearFilter || budgetSummary.year}
                 onChange={(e) => {
-                  refreshBudgetSummary(e.target.value);
+                  if (isBudgetBreakdownView) {
+                    refreshBudgetBreakdown(e.target.value);
+                  } else {
+                    refreshBudgetSummary(e.target.value);
+                  }
                 }}
                 style={{
                   padding: '6px 8px',
@@ -2891,118 +3225,150 @@ if (!isNaN(safeTotal)) {
                 <option value="2026-27">2026-27</option>
                 <option value="2027-28">2027-28</option>
               </select>
-              <select
-                value={selectedBudgetView}
-                onChange={(e) => setSelectedBudgetView(e.target.value)}
-                style={{
-                  padding: '6px 8px',
-                  fontSize: '12px',
-                  border: '1px solid #d0d0d0',
-                  borderRadius: '4px',
-                  backgroundColor: '#fff',
-                  color: '#333',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                <option value="overall">Overall Budget</option>
-                <option value="status">Budget Status</option>
-              </select>
+              {!isBudgetBreakdownView && (
+                <select
+                  value={selectedBudgetView}
+                  onChange={(e) => setSelectedBudgetView(e.target.value)}
+                  style={{
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    color: '#333',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="overall">Overall Budget</option>
+                  <option value="status">Budget Status</option>
+                </select>
+              )}
             </div>
           </div>
-          <div className="chart-card-body" style={{ height: '240px', padding: '12px 14px' }}>
-            <Bar data={budgetSummaryChartData} options={budgetSummaryChartOptions} plugins={[ChartDataLabels]} />
+          <div className="chart-card-body" style={{ height: '234px', padding: isBudgetBreakdownView ? '0' : '10px 12px', display: 'flex', gap: '0' }}>
+            {isBudgetBreakdownView ? (
+              <>
+                {/* Left Side - Pie Chart (64%) */}
+                <div style={{ width: '64%', position: 'relative', borderRight: '1px solid #e8e8e8', padding: '10px' }}>
+                  <div style={{ height: '100%', position: 'relative' }}>
+                    <Pie 
+                      data={{
+                        labels: ['Sanctioned', 'Estimated', 'Pending'],
+                        datasets: [{
+                          data: [
+                            budgetBreakdown.sanction.total || 0,
+                            budgetBreakdown.estimated.total || 0,
+                            budgetBreakdown.pending.total || 0
+                          ],
+                          backgroundColor: ['#2e7d32', '#f57c00', '#c62828'],
+                          borderWidth: 1,
+                          borderColor: '#ffffff',
+                          hoverOffset: 4
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            position: 'bottom',
+                            labels: {
+                              padding: 8,
+                              font: { size: 12 },
+                              usePointStyle: true,
+                              boxWidth: 8
+                            }
+                          },
+                          tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 8,
+                            titleFont: { size: 12 },
+                            bodyFont: { size: 11 },
+                            callbacks: {
+                              label: function(context) {
+                                const value = context.raw;
+                                return '₹' + (value / 10000000).toFixed(1) + 'Cr';
+                              }
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Right Side - Budget Status Data (36%) */}
+                <div style={{ width: '36%', display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px' }}>
+                  {/* Sanctioned Block */}
+                  <div 
+                    onClick={() => setSelectedBudgetType('sanction')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      backgroundColor: selectedBudgetType === 'sanction' ? '#f0f7f0' : '#fafafa',
+                      border: selectedBudgetType === 'sanction' ? '1px solid #2e7d32' : '1px solid #d9d9d9',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#0d3c2c', marginBottom: '5px' }}>Sanctioned</div>
+                    <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
+                      <div><strong>Total:</strong> <span style={{ float: 'right', fontWeight: '600', color: '#2e7d32' }}>₹{(budgetBreakdown.sanction.total / 10000000).toFixed(1)}Cr</span></div>
+                      <div style={{ marginTop: '2px' }}><strong>State:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.sanction.state / 10000000).toFixed(1)}Cr</span></div>
+                      <div style={{ marginTop: '2px' }}><strong>Central:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.sanction.central / 10000000).toFixed(1)}Cr</span></div>
+                    </div>
+                  </div>
+
+                  {/* Estimated Block */}
+                  <div 
+                    onClick={() => setSelectedBudgetType('estimated')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      backgroundColor: selectedBudgetType === 'estimated' ? '#fff8e1' : '#fafafa',
+                      border: selectedBudgetType === 'estimated' ? '1px solid #f57c00' : '1px solid #d9d9d9',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#3d2500', marginBottom: '5px' }}>Estimated</div>
+                    <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
+                      <div><strong>Total:</strong> <span style={{ float: 'right', fontWeight: '600', color: '#f57c00' }}>₹{(budgetBreakdown.estimated.total / 10000000).toFixed(1)}Cr</span></div>
+                      <div style={{ marginTop: '2px' }}><strong>State:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.estimated.state / 10000000).toFixed(1)}Cr</span></div>
+                      <div style={{ marginTop: '2px' }}><strong>Central:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.estimated.central / 10000000).toFixed(1)}Cr</span></div>
+                    </div>
+                  </div>
+
+                  {/* Pending Block */}
+                  <div 
+                    onClick={() => setSelectedBudgetType('pending')}
+                    style={{
+                      padding: '8px 10px',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      backgroundColor: selectedBudgetType === 'pending' ? '#ffebee' : '#fafafa',
+                      border: selectedBudgetType === 'pending' ? '1px solid #c62828' : '1px solid #d9d9d9',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#3a0a09', marginBottom: '5px' }}>Pending</div>
+                    <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
+                      <div><strong>Total:</strong> <span style={{ float: 'right', fontWeight: '600', color: '#c62828' }}>₹{(budgetBreakdown.pending.total / 10000000).toFixed(1)}Cr</span></div>
+                      <div style={{ marginTop: '2px' }}><strong>State:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.pending.state / 10000000).toFixed(1)}Cr</span></div>
+                      <div style={{ marginTop: '2px' }}><strong>Central:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.pending.central / 10000000).toFixed(1)}Cr</span></div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <Bar data={budgetSummaryChartData} options={budgetSummaryChartOptions} plugins={[ChartDataLabels]} />
+            )}
           </div>
         </div>
 
-        
-      </div>
-
-       
-{/* <div className="stat-card teal" style={{ cursor: 'pointer' }} onClick={() => navigate('/attendance?period=today')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ backgroundColor: '#e0f2f1', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FiClock style={{ color: '#00897B', fontSize: '24px' }} />
-            </div>
-            <div>
-              <h4 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.todayAttendance?.total || 0}</h4>
-              <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#666' }}>Today's Attendance</p>
-              
-               <div className="trend" style={{ fontSize: '11px', display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
-              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=present'); }} style={{ color: '#4CAF50', cursor: 'pointer' }}>{stats.todayAttendance?.present || 0} Present</span>
-              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=late'); }} style={{ color: '#FF9800', cursor: 'pointer' }}>{stats.todayAttendance?.late || 0} Late</span>
-              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=absent'); }} style={{ color: '#F44336', cursor: 'pointer' }}>{stats.todayAttendance?.absent || 0} Absent</span>
-              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=half_day'); }} style={{ color: '#9C27B0', cursor: 'pointer' }}>{stats.todayAttendance?.halfDay || 0} Half</span>
-            </div>
-            </div>
-          </div>
-        </div> */}
-      {/* Quick Stats - Hidden as cards moved to main grid */}
-      {/* <div className="quick-stats" style={{ display: 'none' }}>
-
-        <div className="quick-stat">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ backgroundColor: '#e8f5e9', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FiTrendingUp style={{ color: '#4CAF50', fontSize: '20px' }} />
-            </div>
-            <div>
-              <h4>{formatCurrency(quickStats.utilizedBudget)}</h4>
-              <p>Budget Utilized ({quickStats.budgetUtilization}%)</p>
-            </div>
-          </div>
-        </div>
-        <div className="quick-stat">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ backgroundColor: '#e3f2fd', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <BiWallet style={{ color: '#2196F3', fontSize: '20px' }} />
-            </div>
-            <div>
-              <h4>{formatCurrency(quickStats.remainingBudget)}</h4>
-              <p>Remaining Budget</p>
-            </div>
-          </div>
-        </div>
-        <div className="quick-stat">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ backgroundColor: '#fff3e0', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FiMapPin style={{ color: '#FF9800', fontSize: '20px' }} />
-            </div>
-            <div>
-              <h4>{quickStats.districtsCovered}</h4>
-              <p>Districts Covered</p>
-            </div>
-          </div>
-        </div>
-        <div className="quick-stat" onClick={() => window.location.href = '/beneficiaries'} style={{ cursor: 'pointer' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ backgroundColor: '#fce4ec', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <HiOutlineUserGroup style={{ color: '#E91E63', fontSize: '20px' }} />
-            </div>
-            <div>
-              <h4>{formatBeneficiaries(quickStats.beneficiaries)}</h4>
-              <p>Beneficiaries</p>
-              <p>View & manage</p>
-            </div>
-          </div>
-        </div> */}
-        {/* <div className="quick-stat">
-          <h4>{quickStats.attendanceRate}%</h4>
-          <p>Attendance Rate</p>
-        </div> */}
-        
-      {/* </div> */}
-      {/* Charts - 2x2 Grid Layout */}
-      
-      <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-        
-
-       
-
-        {/* Chart 3: Budget (HOD wise) */}
-   
-        {/* Chart 4: Attendance (HOD wise) - Bar Chart */}
-         {/* Attendance Summary Pie Chart - Top Right */}
-        <div className="chart-card" style={{ backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        {/* Attendance Summary Pie Chart - Top Right */}
+        <div className="chart-card" style={{ backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', height: '288px', display: 'flex', flexDirection: 'column' }}>
           <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Attendance (Today)</h3>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -3056,9 +3422,9 @@ if (!isNaN(safeTotal)) {
               )}
             </div>
           </div>
-          <div style={{ display: 'flex', height: 'auto', padding: '0' }}>
+          <div style={{ display: 'flex', height: '234px', padding: '0' }}>
             {/* Left 64%: Pie Chart */}
-            <div style={{ width: '64%', position: 'relative', borderRight: '1px solid #e8e8e8', padding: '12px', minHeight: '220px', height: '220px' }}>
+            <div style={{ width: '64%', position: 'relative', borderRight: '1px solid #e8e8e8', padding: '10px', minHeight: '207px', height: '207px' }}>
               <Pie 
                 data={{
                   labels: ['Present', 'Absent', 'Late', 'Leave'],
@@ -3161,7 +3527,7 @@ if (!isNaN(safeTotal)) {
             </div>
 
             {/* Right 36%: Attendance Data */}
-            <div style={{ width: '36%', display: 'flex', flexDirection: 'column', padding: '12px 16px', overflowY: 'auto' }}>
+            <div style={{ width: '36%', display: 'flex', flexDirection: 'column', padding: '10px 12px' }}>
               {/* Total Employees Block */}
               <div 
                 onClick={() => {
@@ -3281,171 +3647,83 @@ if (!isNaN(safeTotal)) {
             </div>
           </div>
         </div>
-        {/* Budget Breakdown Enhanced Card - Government Style */}
-        <div className="chart-card" style={{ gridColumn: '2 / 3', backgroundColor: '#ffffff', border: '1px solid #d0d0d0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div className="chart-card-header" style={{ backgroundColor: '#f8f8f8', borderBottom: '1px solid #d0d0d0',  display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a', margin: 0 }}>Budget Breakdown (FY {budgetBreakdownYearFilter || budgetBreakdown.year})</h3>
-            <select 
-              value={budgetBreakdownYearFilter || budgetBreakdown.year} 
-              onChange={(e) => {
-                refreshBudgetBreakdown(e.target.value);
-              }}
-              style={{
-                padding: '4px 8px',
-                fontSize: '12px',
-                border: '1px solid #d0d0d0',
-                borderRadius: '3px',
-                backgroundColor: '#fff',
-                color: '#333',
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              <option value="2024-25">2024-25</option>
-              <option value="2025-26">2025-26</option>
-              <option value="2026-27">2026-27</option>
-              <option value="2027-28">2027-28</option>
-            </select>
-          </div>
-          <div className="chart-card-body" style={{ display: 'flex', gap: '0', height: '240px', padding: '0' }}>
-            {/* Left Side - Pie Chart (64%) */}
-            <div style={{ width: '64%', position: 'relative', borderRight: '1px solid #e8e8e8', padding: '12px' }}>
-              <div style={{ height: '100%', position: 'relative' }}>
-                <Pie 
-                  data={{
-                    labels: ['Sanctioned', 'Estimated', 'Pending'],
-                    datasets: [{
-                      data: [
-                        budgetBreakdown.sanction.total || 0,
-                        budgetBreakdown.estimated.total || 0,
-                        budgetBreakdown.pending.total || 0
-                      ],
-                      backgroundColor: ['#2e7d32', '#f57c00', '#c62828'],
-                      borderWidth: 1,
-                      borderColor: '#ffffff',
-                      hoverOffset: 4
-                    }]
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        position: 'bottom',
-                        labels: {
-                          padding: 6,
-                          usePointStyle: true,
-                          font: { size: 11, weight: '500' },
-                          color: '#333',
-                          generateLabels: function(chart) {
-                            const data = chart.data;
-                            return data.labels.map((label, i) => {
-                              const value = data.datasets[0].data[i] || 0;
-                              const percentage = ((value / (data.datasets[0].data.reduce((a, b) => (a || 0) + (b || 0), 0) || 1)) * 100).toFixed(1);
-                              return {
-                                text: `${label}: ₹${(value / 10000000).toFixed(1)}Cr (${percentage}%)`,
-                                fillStyle: data.datasets[0].backgroundColor[i],
-                                hidden: false,
-                                index: i
-                              };
-                            });
-                          }
-                        }
-                      },
-                      tooltip: {
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        padding: 8,
-                        titleFont: { size: 11 },
-                        bodyFont: { size: 10 },
-                        callbacks: {
-                          label: function(context) {
-                            const value = context.parsed || 0;
-                            const total = context.dataset.data.reduce((a, b) => (a || 0) + (b || 0), 0);
-                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                            return `₹${(value / 10000000).toFixed(1)}Cr (${percentage}%)`;
-                          }
-                        }
-                      },
-                      datalabels: {
-                        color: '#fff',
-                        font: { size: 10, weight: 'bold' },
-                        formatter: function(value) {
-                          if (value === 0) return '';
-                          return (value / 10000000).toFixed(1) + 'Cr';
-                        },
-                        display: true
-                      }
-                    }
-                  }}
-                  plugins={[ChartDataLabels]}
-                />
-              </div>
+
+        
+      </div>
+
+       
+{/* <div className="stat-card teal" style={{ cursor: 'pointer' }} onClick={() => navigate('/attendance?period=today')}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ backgroundColor: '#e0f2f1', padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiClock style={{ color: '#00897B', fontSize: '24px' }} />
             </div>
+            <div>
+              <h4 style={{ fontSize: '24px', fontWeight: '700', margin: 0 }}>{stats.todayAttendance?.total || 0}</h4>
+              <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#666' }}>Today's Attendance</p>
+              
+               <div className="trend" style={{ fontSize: '11px', display: 'flex', gap: '6px', flexWrap: 'nowrap' }}>
+              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=present'); }} style={{ color: '#4CAF50', cursor: 'pointer' }}>{stats.todayAttendance?.present || 0} Present</span>
+              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=late'); }} style={{ color: '#FF9800', cursor: 'pointer' }}>{stats.todayAttendance?.late || 0} Late</span>
+              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=absent'); }} style={{ color: '#F44336', cursor: 'pointer' }}>{stats.todayAttendance?.absent || 0} Absent</span>
+              <span onClick={(e) => { e.stopPropagation(); navigate('/attendance?status=half_day'); }} style={{ color: '#9C27B0', cursor: 'pointer' }}>{stats.todayAttendance?.halfDay || 0} Half</span>
+            </div>
+            </div>
+          </div>
+        </div> */}
+      {/* Quick Stats - Hidden as cards moved to main grid */}
+      {/* <div className="quick-stats" style={{ display: 'none' }}>
 
-            {/* Right Side - Budget Status Data (36%) */}
-            <div style={{ width: '36%', display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px 12px', overflowY: 'auto' }}>
-              {/* Sanctioned Block */}
-              <div 
-                onClick={() => setSelectedBudgetType('sanction')}
-                style={{
-                  padding: '8px 10px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  backgroundColor: selectedBudgetType === 'sanction' ? '#f0f7f0' : '#fafafa',
-                  border: selectedBudgetType === 'sanction' ? '1px solid #2e7d32' : '1px solid #d9d9d9',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#0d3c2c', marginBottom: '5px' }}>Sanctioned</div>
-                <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
-                  <div><strong>Total:</strong> <span style={{ float: 'right', fontWeight: '600', color: '#2e7d32' }}>₹{(budgetBreakdown.sanction.total / 10000000).toFixed(1)}Cr</span></div>
-                  <div style={{ marginTop: '2px' }}><strong>State:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.sanction.state / 10000000).toFixed(1)}Cr</span></div>
-                  <div style={{ marginTop: '2px' }}><strong>Central:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.sanction.central / 10000000).toFixed(1)}Cr</span></div>
-                </div>
-              </div>
-
-              {/* Estimated Block */}
-              <div 
-                onClick={() => setSelectedBudgetType('estimated')}
-                style={{
-                  padding: '8px 10px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  backgroundColor: selectedBudgetType === 'estimated' ? '#fff8e1' : '#fafafa',
-                  border: selectedBudgetType === 'estimated' ? '1px solid #f57c00' : '1px solid #d9d9d9',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#3d2500', marginBottom: '5px' }}>Estimated</div>
-                <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
-                  <div><strong>Total:</strong> <span style={{ float: 'right', fontWeight: '600', color: '#f57c00' }}>₹{(budgetBreakdown.estimated.total / 10000000).toFixed(1)}Cr</span></div>
-                  <div style={{ marginTop: '2px' }}><strong>State:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.estimated.state / 10000000).toFixed(1)}Cr</span></div>
-                  <div style={{ marginTop: '2px' }}><strong>Central:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.estimated.central / 10000000).toFixed(1)}Cr</span></div>
-                </div>
-              </div>
-
-              {/* Pending Block */}
-              <div 
-                onClick={() => setSelectedBudgetType('pending')}
-                style={{
-                  padding: '8px 10px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  backgroundColor: selectedBudgetType === 'pending' ? '#ffebee' : '#fafafa',
-                  border: selectedBudgetType === 'pending' ? '1px solid #c62828' : '1px solid #d9d9d9',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#3a0a09', marginBottom: '5px' }}>Pending</div>
-                <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
-                  <div><strong>Total:</strong> <span style={{ float: 'right', fontWeight: '600', color: '#c62828' }}>₹{(budgetBreakdown.pending.total / 10000000).toFixed(1)}Cr</span></div>
-                  <div style={{ marginTop: '2px' }}><strong>State:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.pending.state / 10000000).toFixed(1)}Cr</span></div>
-                  <div style={{ marginTop: '2px' }}><strong>Central:</strong> <span style={{ float: 'right', fontWeight: '500', color: '#555' }}>₹{(budgetBreakdown.pending.central / 10000000).toFixed(1)}Cr</span></div>
-                </div>
-              </div>
+        <div className="quick-stat">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ backgroundColor: '#e8f5e9', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiTrendingUp style={{ color: '#4CAF50', fontSize: '20px' }} />
+            </div>
+            <div>
+              <h4>{formatCurrency(quickStats.utilizedBudget)}</h4>
+              <p>Budget Utilized ({quickStats.budgetUtilization}%)</p>
             </div>
           </div>
         </div>
+        <div className="quick-stat">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ backgroundColor: '#e3f2fd', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BiWallet style={{ color: '#2196F3', fontSize: '20px' }} />
+            </div>
+            <div>
+              <h4>{formatCurrency(quickStats.remainingBudget)}</h4>
+              <p>Remaining Budget</p>
+            </div>
+          </div>
+        </div>
+        <div className="quick-stat">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ backgroundColor: '#fff3e0', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FiMapPin style={{ color: '#FF9800', fontSize: '20px' }} />
+            </div>
+            <div>
+              <h4>{quickStats.districtsCovered}</h4>
+              <p>Districts Covered</p>
+            </div>
+          </div>
+        </div>
+        <div className="quick-stat" onClick={() => window.location.href = '/beneficiaries'} style={{ cursor: 'pointer' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ backgroundColor: '#fce4ec', padding: '10px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <HiOutlineUserGroup style={{ color: '#E91E63', fontSize: '20px' }} />
+            </div>
+            <div>
+              <h4>{formatBeneficiaries(quickStats.beneficiaries)}</h4>
+              <p>Beneficiaries</p>
+              <p>View & manage</p>
+            </div>
+          </div>
+        </div> */}
+        {/* <div className="quick-stat">
+          <h4>{quickStats.attendanceRate}%</h4>
+          <p>Attendance Rate</p>
+        </div> */}
+        
+      {/* </div> */}
         {/* <div className="chart-card">
           <div className="chart-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3><FiBarChart2 /> Attendance (HOD wise) {chartFilters.attendance.hod_id && <span style={{ fontSize: '12px', color: '#666', fontWeight: 'normal' }}>({allHODs.find(h => h.id === parseInt(chartFilters.attendance.hod_id))?.name})</span>}</h3>
@@ -3465,7 +3743,7 @@ if (!isNaN(safeTotal)) {
           </div>
         </div> */}
       </div>
-      </div>
+      )}
       {/* End Scrollable Charts Container */}
 
       {/* Tables */}
@@ -3480,6 +3758,2408 @@ if (!isNaN(safeTotal)) {
         columns={modalData.columns}
         formatItem={formatModalItem}
       />
+
+      {/* Scheme Insights Inline */}
+      {schemeInsightsOpen && (
+        <div style={{
+          marginTop: '0px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '5px 10px',
+            borderBottom: '2px solid #e0e0e0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#fff'
+          }}>
+            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>
+              Page 3: Scheme Insights
+            </h2>
+            <button
+              onClick={() => setSchemeInsightsOpen(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                cursor: 'pointer',
+                color: '#666',
+                padding: '0 10px',
+                lineHeight: '1'
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{
+            display: 'flex',
+            minHeight: '600px'
+          }}>
+            {/* Left Sidebar - Filters */}
+            <div style={{
+              width: '200px',
+              backgroundColor: '#fff',
+              borderRight: '1px solid #e0e0e0',
+              padding: '12px'
+            }}>
+                <h3 style={{ 
+                  fontSize: '13px', 
+                  fontWeight: '600', 
+                  marginBottom: '12px',
+                  color: '#333',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <FiFilter /> Filters
+                </h3>
+
+                {/* Department Filter */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    marginBottom: '4px',
+                    color: '#555'
+                  }}>
+                    Department
+                  </label>
+                  <select
+                    value={schemeInsightsFilters.department}
+                    onChange={(e) => setSchemeInsightsFilters({
+                      ...schemeInsightsFilters,
+                      department: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      fontSize: '12px',
+                      border: '1px solid #d0d0d0',
+                      borderRadius: '4px',
+                      backgroundColor: '#fff',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="">All Departments</option>
+                    {Array.from(new Set(allSchemes.map(s => s.category || s.department).filter(Boolean))).map(dept => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Year Filter */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    marginBottom: '4px',
+                    color: '#555'
+                  }}>
+                    Year
+                  </label>
+                  <select
+                    value={schemeInsightsFilters.year}
+                    onChange={(e) => setSchemeInsightsFilters({
+                      ...schemeInsightsFilters,
+                      year: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      fontSize: '12px',
+                      border: '1px solid #d0d0d0',
+                      borderRadius: '4px',
+                      backgroundColor: '#fff',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="2024-25">2024-25</option>
+                    <option value="2025-26">2025-26</option>
+                    <option value="2026-27">2026-27</option>
+                    <option value="2027-28">2027-28</option>
+                  </select>
+                </div>
+
+                {/* Scheme Status Filter */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    marginBottom: '4px',
+                    color: '#555'
+                  }}>
+                    Scheme Status
+                  </label>
+                  <select
+                    value={schemeInsightsFilters.schemeStatus}
+                    onChange={(e) => setSchemeInsightsFilters({
+                      ...schemeInsightsFilters,
+                      schemeStatus: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      fontSize: '12px',
+                      border: '1px solid #d0d0d0',
+                      borderRadius: '4px',
+                      backgroundColor: '#fff',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="planned">Planned</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+
+                {/* HOD Filter */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    marginBottom: '4px',
+                    color: '#555'
+                  }}>
+                    HOD
+                  </label>
+                  <select
+                    value={schemeInsightsFilters.hodId}
+                    onChange={(e) => setSchemeInsightsFilters({
+                      ...schemeInsightsFilters,
+                      hodId: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      fontSize: '12px',
+                      border: '1px solid #d0d0d0',
+                      borderRadius: '4px',
+                      backgroundColor: '#fff',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="">All HODs</option>
+                    {allHODs.map(hod => (
+                      <option key={hod.id} value={hod.id}>{hod.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Chart View Filter */}
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    marginBottom: '4px',
+                    color: '#555'
+                  }}>
+                    Chart View
+                  </label>
+                  <select
+                    value={schemeInsightsFilters.chartView}
+                    onChange={(e) => setSchemeInsightsFilters({
+                      ...schemeInsightsFilters,
+                      chartView: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      fontSize: '12px',
+                      border: '1px solid #d0d0d0',
+                      borderRadius: '4px',
+                      backgroundColor: '#fff',
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value="status">By Status</option>
+                    <option value="allSchemes">All Schemes</option>
+                    <option value="stateSchemes">State Schemes</option>
+                    <option value="centralSchemes">Central Schemes</option>
+                  </select>
+                </div>
+
+                {/* Reset Button */}
+                <button
+                  onClick={() => {
+                    setSchemeInsightsFilters({
+                      department: '',
+                      year: '2025-26',
+                      schemeStatus: '',
+                      hodId: '',
+                      chartView: 'status'
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    backgroundColor: '#f5f5f5',
+                    color: '#333',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#e0e0e0'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                >
+                  Reset
+                </button>
+              </div>
+
+            {/* Right Content Area */}
+            <div style={{
+              flex: 1,
+              padding: '5px',
+              backgroundColor: '#f5f5f5'
+            }}>
+              <SchemeInsightsContent 
+                filters={schemeInsightsFilters}
+                allSchemes={allSchemes}
+                allHODs={allHODs}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attendance Insights Inline */}
+      {attendanceInsightsOpen && (
+        <div style={{
+          marginTop: '0px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '5px 15px',
+            borderBottom: '2px solid #e0e0e0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#fff'
+          }}>
+            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>
+              ATTEDENCE OVERVIEW
+            </h2>
+            <button
+              onClick={() => setAttendanceInsightsOpen(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                cursor: 'pointer',
+                color: '#666',
+                padding: '0 10px',
+                lineHeight: '1'
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{
+            display: 'flex',
+            minHeight: '600px'
+          }}>
+            {/* Left Sidebar - Filters */}
+            <div style={{
+              width: '200px',
+              backgroundColor: '#fff',
+              borderRight: '1px solid #e0e0e0',
+              padding: '12px'
+            }}>
+              <h3 style={{ 
+                fontSize: '13px', 
+                fontWeight: '600', 
+                marginBottom: '12px',
+                color: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <FiFilter /> Filters
+              </h3>
+
+              {/* Period Filter */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                  color: '#555'
+                }}>
+                  Period
+                </label>
+                <select
+                  value={attendanceInsightsFilters.period}
+                  onChange={(e) => setAttendanceInsightsFilters({
+                    ...attendanceInsightsFilters,
+                    period: e.target.value
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="today">Today</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="yearly">Yearly</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+
+              {/* HOD Filter */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                  color: '#555'
+                }}>
+                  HOD
+                </label>
+                <select
+                  value={attendanceInsightsFilters.hodId}
+                  onChange={(e) => setAttendanceInsightsFilters({
+                    ...attendanceInsightsFilters,
+                    hodId: e.target.value
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="">All HODs</option>
+                  {allHODs.map(hod => (
+                    <option key={hod.id} value={hod.id}>{hod.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                  color: '#555'
+                }}>
+                  Attendance Status
+                </label>
+                <select
+                  value={attendanceInsightsFilters.status}
+                  onChange={(e) => setAttendanceInsightsFilters({
+                    ...attendanceInsightsFilters,
+                    status: e.target.value
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="">All Status</option>
+                  <option value="present">Present</option>
+                  <option value="absent">Absent</option>
+                  <option value="late">Late</option>
+                  <option value="leave">Leave</option>
+                </select>
+              </div>
+
+              {/* Reset Button */}
+              <button
+                onClick={() => {
+                  setAttendanceInsightsFilters({
+                    period: 'today',
+                    hodId: '',
+                    status: ''
+                  });
+                }}
+                style={{
+                  width: '100%',
+                  padding: '6px 8px',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  backgroundColor: '#f5f5f5',
+                  color: '#333',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#e0e0e0'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+              >
+                Reset
+              </button>
+            </div>
+
+            {/* Right Content Area */}
+            <div style={{
+              flex: 1,
+              padding: '5px',
+              backgroundColor: '#f5f5f5'
+            }}>
+              <AttendanceInsightsContent 
+                filters={attendanceInsightsFilters}
+                allAttendance={attendanceByHOD}
+                allHODs={allHODs}
+                stats={stats}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HOD Insights Inline */}
+      {hodInsightsOpen && (
+        <div style={{
+          marginTop: '0px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '5px 10px',
+            borderBottom: '2px solid #e0e0e0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#fff'
+          }}>
+            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>
+              HOD MANAGEMENT
+            </h2>
+            <button
+              onClick={() => setHodInsightsOpen(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                cursor: 'pointer',
+                color: '#666',
+                padding: '0 10px',
+                lineHeight: '1'
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{
+            display: 'flex',
+            minHeight: '600px'
+          }}>
+            {/* Left Sidebar - Filters */}
+            <div style={{
+              width: '200px',
+              backgroundColor: '#fff',
+              borderRight: '1px solid #e0e0e0',
+              padding: '12px'
+            }}>
+              <h3 style={{ 
+                fontSize: '13px', 
+                fontWeight: '600', 
+                marginBottom: '12px',
+                color: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <FiFilter /> Chart Type
+              </h3>
+
+              {/* Chart Type Selection */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                  color: '#555'
+                }}>
+                  Select Chart
+                </label>
+                <select
+                  value={hodInsightsChartType}
+                  onChange={(e) => setHodInsightsChartType(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="revenue">HOD Revenue</option>
+                  <option value="budget">Budget by HOD</option>
+                  <option value="schemes">Schemes by HOD</option>
+                </select>
+              </div>
+
+              {/* Info Box */}
+              <div style={{
+                padding: '8px',
+                backgroundColor: '#e3f2fd',
+                borderRadius: '4px',
+                borderLeft: '3px solid #1976d2',
+                marginTop: '12px'
+              }}>
+                <div style={{ fontSize: '11px', color: '#1565c0', fontWeight: '600' }}>
+                  {hodInsightsChartType === 'revenue' && 'HOD Revenue Distribution'}
+                  {hodInsightsChartType === 'budget' && 'Budget Allocation by HOD'}
+                  {hodInsightsChartType === 'schemes' && 'Schemes Count by HOD'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#0d47a1', marginTop: '3px' }}>
+                  {hodInsightsChartType === 'revenue' && 'View revenue generated by each HOD'}
+                  {hodInsightsChartType === 'budget' && 'View budget allocation across HODs'}
+                  {hodInsightsChartType === 'schemes' && 'View scheme distribution across HODs'}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Content Area */}
+            <div style={{
+              flex: 1,
+              padding: '5px',
+              backgroundColor: '#f5f5f5'
+            }}>
+              <HodInsightsContent 
+                chartType={hodInsightsChartType}
+                revenueByHOD={revenueByHOD}
+                budgetByHOD={budgetByHOD}
+                schemesByHOD={schemesByHOD}
+                allHODs={allHODs}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Budget Insights Inline */}
+      {budgetInsightsOpen && (
+        <div style={{
+          marginTop: '0px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '5px 10px',
+            borderBottom: '2px solid #e0e0e0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: '#fff'
+          }}>
+            <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '600', color: '#1a1a1a' }}>
+              Budget Management
+            </h2>
+            <button
+              onClick={() => setBudgetInsightsOpen(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                cursor: 'pointer',
+                color: '#666',
+                padding: '0 10px',
+                lineHeight: '1'
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{
+            display: 'flex',
+            minHeight: '600px'
+          }}>
+            {/* Left Sidebar - Filters */}
+            <div style={{
+              width: '200px',
+              backgroundColor: '#fff',
+              borderRight: '1px solid #e0e0e0',
+              padding: '12px'
+            }}>
+              <h3 style={{ 
+                fontSize: '13px', 
+                fontWeight: '600', 
+                marginBottom: '12px',
+                color: '#333',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <FiFilter /> Filters
+              </h3>
+
+              {/* Chart Type Selection */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                  color: '#555'
+                }}>
+                  Budget View
+                </label>
+                <select
+                  value={budgetInsightsFilters.chartType}
+                  onChange={(e) => setBudgetInsightsFilters({
+                    ...budgetInsightsFilters,
+                    chartType: e.target.value
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="summary">Budget Summary</option>
+                  <option value="breakdown">Budget Breakdown</option>
+                  <option value="byHod">Budget by HOD</option>
+                </select>
+              </div>
+
+              {/* Year Filter */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                  color: '#555'
+                }}>
+                  Year
+                </label>
+                <select
+                  value={budgetInsightsFilters.year}
+                  onChange={(e) => setBudgetInsightsFilters({
+                    ...budgetInsightsFilters,
+                    year: e.target.value
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="2024-25">2024-25</option>
+                  <option value="2025-26">2025-26</option>
+                  <option value="2026-27">2026-27</option>
+                  <option value="2027-28">2027-28</option>
+                </select>
+              </div>
+
+              {/* Budget Status Filter */}
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  marginBottom: '4px',
+                  color: '#555'
+                }}>
+                  Budget Status
+                </label>
+                <select
+                  value={budgetInsightsFilters.status}
+                  onChange={(e) => setBudgetInsightsFilters({
+                    ...budgetInsightsFilters,
+                    status: e.target.value
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: '12px',
+                    border: '1px solid #d0d0d0',
+                    borderRadius: '4px',
+                    backgroundColor: '#fff',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value="">All Status</option>
+                  <option value="allocated">Allocated</option>
+                  <option value="utilized">Utilized</option>
+                  <option value="remaining">Remaining</option>
+                </select>
+              </div>
+
+              {/* Info Box */}
+              <div style={{
+                padding: '8px',
+                backgroundColor: '#e3f2fd',
+                borderRadius: '4px',
+                borderLeft: '3px solid #1976d2',
+                marginTop: '12px'
+              }}>
+                <div style={{ fontSize: '11px', color: '#1565c0', fontWeight: '600' }}>
+                  {budgetInsightsFilters.chartType === 'summary' && 'Budget Summary'}
+                  {budgetInsightsFilters.chartType === 'breakdown' && 'Budget Breakdown'}
+                  {budgetInsightsFilters.chartType === 'byHod' && 'Budget by HOD'}
+                </div>
+                <div style={{ fontSize: '10px', color: '#0d47a1', marginTop: '3px' }}>
+                  {budgetInsightsFilters.chartType === 'summary' && 'View overall budget allocation'}
+                  {budgetInsightsFilters.chartType === 'breakdown' && 'View budget breakdown details'}
+                  {budgetInsightsFilters.chartType === 'byHod' && 'View budget by HOD distribution'}
+                </div>
+              </div>
+
+              {/* Reset Button */}
+              <button
+                onClick={() => {
+                  setBudgetInsightsFilters({
+                    chartType: 'summary',
+                    year: '2025-26',
+                    status: ''
+                  });
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  backgroundColor: '#f5f5f5',
+                  color: '#333',
+                  border: '1px solid #d0d0d0',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  marginTop: '20px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#e0e0e0'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+              >
+                Reset Filters
+              </button>
+            </div>
+
+            {/* Right Content Area */}
+            <div style={{
+              flex: 1,
+              padding: '5px',
+              backgroundColor: '#f5f5f5'
+            }}>
+              <BudgetInsightsContent 
+                filters={budgetInsightsFilters}
+                budgetSummary={budgetSummary}
+                budgetBreakdown={budgetBreakdown}
+                budgetByHOD={budgetByHOD}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Budget Insights Content Component
+const BudgetInsightsContent = ({ filters, budgetSummary, budgetBreakdown, budgetByHOD }) => {
+  const formatCurrency = (amount) => {
+    const num = parseFloat(amount) || 0;
+    if (num >= 10000000) {
+      return `₹${(num / 10000000).toFixed(2)} Cr`;
+    } else if (num >= 100000) {
+      return `₹${(num / 100000).toFixed(2)} L`;
+    }
+    return `₹${num.toFixed(2)}`;
+  };
+
+  let chartData, summaryCards, tableData;
+
+  if (filters.chartType === 'summary') {
+    // Budget Summary (Total, Central, State)
+    const total = budgetSummary.total || { total: 0, central: 0, state: 0 };
+    
+    chartData = {
+      labels: ['Central', 'State'],
+      datasets: [{
+        data: [total.central || 0, total.state || 0],
+        backgroundColor: ['#1565c0', '#2e7d32'],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    };
+
+    summaryCards = [
+      { label: 'Total Budget', value: formatCurrency(total.total || 0), color: '#1565c0' },
+      { label: 'Central Share', value: formatCurrency(total.central || 0), color: '#2e7d32' },
+      { label: 'State Share', value: formatCurrency(total.state || 0), color: '#ef6c00' }
+    ];
+
+    tableData = [
+      { type: 'Total', central: total.central || 0, state: total.state || 0, total: total.total || 0 }
+    ];
+  } else if (filters.chartType === 'breakdown') {
+    // Budget Breakdown (Estimated, Sanction, Pending)
+    const breakdown = budgetBreakdown;
+    
+    chartData = {
+      labels: ['Estimated', 'Sanction', 'Pending'],
+      datasets: [{
+        data: [breakdown.estimated?.total || 0, breakdown.sanction?.total || 0, breakdown.pending?.total || 0],
+        backgroundColor: ['#1565c0', '#2e7d32', '#FF9800'],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    };
+
+    summaryCards = [
+      { label: 'Estimated', value: formatCurrency(breakdown.estimated?.total || 0), color: '#1565c0' },
+      { label: 'Sanction', value: formatCurrency(breakdown.sanction?.total || 0), color: '#2e7d32' },
+      { label: 'Pending', value: formatCurrency(breakdown.pending?.total || 0), color: '#FF9800' }
+    ];
+
+    tableData = [
+      { 
+        type: 'Estimated', 
+        central: breakdown.estimated?.central || 0, 
+        state: breakdown.estimated?.state || 0, 
+        total: breakdown.estimated?.total || 0 
+      },
+      { 
+        type: 'Sanction', 
+        central: breakdown.sanction?.central || 0, 
+        state: breakdown.sanction?.state || 0, 
+        total: breakdown.sanction?.total || 0 
+      },
+      { 
+        type: 'Pending', 
+        central: breakdown.pending?.central || 0, 
+        state: breakdown.pending?.state || 0, 
+        total: breakdown.pending?.total || 0 
+      }
+    ];
+  } else if (filters.chartType === 'byHod') {
+    // Budget by HOD
+    const allocatedByHOD = budgetByHOD.map(item => item.allocated || 0);
+    const hodNames = budgetByHOD.map(item => item.department || item.hod_name || 'Unknown');
+
+    const totalAllocated = allocatedByHOD.reduce((a, b) => a + b, 0);
+
+    chartData = {
+      labels: hodNames,
+      datasets: [{
+        data: allocatedByHOD,
+        backgroundColor: [
+          '#1565c0', '#2e7d32', '#ef6c00', '#7b1fa2', '#c62828',
+          '#00838f', '#FFD700', '#E91E63', '#795548', '#607D8B'
+        ],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    };
+
+    summaryCards = [
+      { label: 'Total Allocated', value: formatCurrency(totalAllocated), color: '#1565c0' },
+      { label: 'HOD Count', value: budgetByHOD.length, color: '#2e7d32' },
+      { label: 'Avg per HOD', value: formatCurrency(totalAllocated / (budgetByHOD.length || 1)), color: '#ef6c00' }
+    ];
+
+    tableData = budgetByHOD;
+  }
+
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right',
+        align: 'center',
+        maxHeight: 250,
+        labels: {
+          padding: 15,
+          usePointStyle: true,
+          font: { size: 11 },
+          generateLabels: function(chart) {
+            const data = chart.data;
+            if (data.labels.length && data.datasets.length) {
+              const total = data.datasets[0].data.reduce((a, b) => Number(a) + Number(b), 0);
+              return data.labels.map((label, i) => {
+                const value = Number(data.datasets[0].data[i]) || 0;
+                const percentage = total > 0 ? (value / total) * 100 : 0;
+                const pctText = percentage > 0 && percentage < 1 ? '<1' : percentage.toFixed(0);
+                const truncatedLabel = label.length > 18 ? label.substring(0, 16) + '..' : label;
+                return {
+                  text: `${truncatedLabel} (${pctText}%)`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: '#ffffff',
+                  lineWidth: 1,
+                  hidden: false,
+                  index: i
+                };
+              });
+            }
+            return [];
+          }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((context.parsed / total) * 100).toFixed(1);
+            return `${formatCurrency(context.parsed)} (${percentage}%)`;
+          }
+        }
+      },
+      datalabels: {
+        color: '#fff',
+        font: { size: 12, weight: 'bold' },
+        formatter: (value, context) => {
+          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+          const percentage = ((value / total) * 100).toFixed(0);
+          return percentage >= 3 ? `${percentage}%` : '';
+        }
+      }
+    }
+  };
+
+  return (
+    <div>
+      {/* Summary Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '8px',
+        marginBottom: '12px'
+      }}>
+        {summaryCards.map((card, index) => (
+          <div key={index} style={{
+            backgroundColor: '#fff',
+            padding: '8px 10px',
+            borderRadius: '4px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div style={{ fontSize: '13px', color: '#666', fontWeight: '700' }}>
+              {card.label}
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: card.color }}>
+              {card.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div style={{
+        backgroundColor: '#fff',
+        padding: '12px',
+        borderRadius: '4px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        marginBottom: '12px'
+      }}>
+        <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#333' }}>
+          {filters.chartType === 'summary' && 'Budget Summary Distribution'}
+          {filters.chartType === 'breakdown' && 'Budget Breakdown'}
+          {filters.chartType === 'byHod' && 'Budget Distribution by HOD'}
+        </h3>
+        <div style={{ height: '320px' }}>
+          <Pie data={chartData} options={pieOptions} plugins={[ChartDataLabels]} />
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div style={{
+        backgroundColor: '#fff',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          padding: '15px 20px',
+          backgroundColor: '#f8f9fa',
+          borderBottom: '1px solid #e0e0e0'
+        }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', margin: 0, color: '#333' }}>
+            {filters.chartType === 'summary' && 'Budget Summary Details'}
+            {filters.chartType === 'breakdown' && 'Budget Breakdown Details'}
+            {filters.chartType === 'byHod' && 'Budget Details by HOD'}
+          </h3>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
+                {filters.chartType === 'byHod' ? (
+                  <>
+                    <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: '#555' }}>Department</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Allocated</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Utilized</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Utilization %</th>
+                  </>
+                ) : (
+                  <>
+                    <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: '#555' }}>{filters.chartType === 'summary' ? 'Budget Type' : 'Breakdown Type'}</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Central</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>State</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Total</th>
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {filters.chartType === 'byHod' ? (
+                budgetByHOD.map((item, index) => {
+                  const allocated = parseFloat(item.allocated) || 0;
+                  const utilized = parseFloat(item.utilized) || 0;
+                  const utilization = allocated > 0 ? ((utilized / allocated) * 100).toFixed(1) : 0;
+                  return (
+                    <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 15px', fontWeight: '600', color: '#333' }}>{item.department || item.hod_name}</td>
+                      <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#1565c0' }}>{formatCurrency(allocated)}</td>
+                      <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#2e7d32' }}>{formatCurrency(utilized)}</td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '4px 10px',
+                          backgroundColor: utilization >= 75 ? '#e8f5e9' : utilization >= 50 ? '#fff3e0' : '#ffebee',
+                          color: utilization >= 75 ? '#2e7d32' : utilization >= 50 ? '#ef6c00' : '#c62828',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}>
+                          {utilization}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                tableData.map((item, index) => (
+                  <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 15px', fontWeight: '600', color: '#333' }}>{item.type}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#1565c0' }}>{formatCurrency(item.central)}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#2e7d32' }}>{formatCurrency(item.state)}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '700', color: '#333' }}>{formatCurrency(item.total)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// HOD Insights Content Component
+const HodInsightsContent = ({ chartType, revenueByHOD, budgetByHOD, schemesByHOD, allHODs }) => {
+  // Prepare data based on chart type
+  let chartData, chartOptions, summaryCards;
+
+  const formatCurrency = (amount) => {
+    if (amount >= 10000000) {
+      return `₹${(amount / 10000000).toFixed(2)} Cr`;
+    } else if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(2)} L`;
+    }
+    return `₹${amount.toFixed(2)}`;
+  };
+
+  if (chartType === 'revenue') {
+    const totalRevenue = revenueByHOD.reduce((sum, item) => sum + (parseFloat(item.revenue) || 0), 0);
+    
+    chartData = {
+      labels: revenueByHOD.map(item => item.hod_name || 'Unknown'),
+      datasets: [{
+        data: revenueByHOD.map(item => parseFloat(item.revenue) || 0),
+        backgroundColor: [
+          '#1565c0', '#2e7d32', '#ef6c00', '#7b1fa2', '#c62828',
+          '#00838f', '#FFD700', '#E91E63', '#795548', '#607D8B'
+        ],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    };
+
+    summaryCards = [
+      { label: 'Total Revenue', value: formatCurrency(totalRevenue), color: '#1565c0' },
+      { label: 'HODs Count', value: revenueByHOD.length, color: '#2e7d32' },
+      { label: 'Avg Revenue', value: formatCurrency(totalRevenue / (revenueByHOD.length || 1)), color: '#ef6c00' }
+    ];
+  } else if (chartType === 'budget') {
+    const totalAllocated = budgetByHOD.reduce((sum, item) => sum + (parseFloat(item.allocated) || 0), 0);
+    const totalUtilized = budgetByHOD.reduce((sum, item) => sum + (parseFloat(item.utilized) || 0), 0);
+
+    chartData = {
+      labels: budgetByHOD.map(item => item.department || item.hod_name || 'Unknown'),
+      datasets: [
+        {
+          label: 'Allocated',
+          data: budgetByHOD.map(item => (parseFloat(item.allocated) || 0) / 10000000),
+          backgroundColor: '#1565c0',
+          borderRadius: 4
+        },
+        {
+          label: 'Utilized',
+          data: budgetByHOD.map(item => (parseFloat(item.utilized) || 0) / 10000000),
+          backgroundColor: '#2e7d32',
+          borderRadius: 4
+        }
+      ]
+    };
+
+    summaryCards = [
+      { label: 'Total Allocated', value: formatCurrency(totalAllocated), color: '#1565c0' },
+      { label: 'Total Utilized', value: formatCurrency(totalUtilized), color: '#2e7d32' },
+      { label: 'Utilization %', value: `${totalAllocated > 0 ? ((totalUtilized / totalAllocated) * 100).toFixed(1) : 0}%`, color: '#ef6c00' }
+    ];
+  } else if (chartType === 'schemes') {
+    const totalSchemes = schemesByHOD.reduce((sum, item) => sum + (parseInt(item.scheme_count) || 0), 0);
+
+    chartData = {
+      labels: schemesByHOD.map(item => item.hod_name || 'Unknown'),
+      datasets: [{
+        data: schemesByHOD.map(item => parseInt(item.scheme_count) || 0),
+        backgroundColor: [
+          '#1565c0', '#2e7d32', '#ef6c00', '#7b1fa2', '#c62828',
+          '#00838f', '#FFD700', '#E91E63', '#795548', '#607D8B'
+        ],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    };
+
+    summaryCards = [
+      { label: 'Total Schemes', value: totalSchemes, color: '#1565c0' },
+      { label: 'HODs Count', value: schemesByHOD.length, color: '#2e7d32' },
+      { label: 'Avg per HOD', value: (totalSchemes / (schemesByHOD.length || 1)).toFixed(1), color: '#ef6c00' }
+    ];
+  }
+
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'right',
+        align: 'center',
+        maxHeight: 250,
+        labels: {
+          padding: 15,
+          usePointStyle: true,
+          font: { size: 11 },
+          generateLabels: function(chart) {
+            const data = chart.data;
+            if (data.labels.length && data.datasets.length) {
+              const total = data.datasets[0].data.reduce((a, b) => Number(a) + Number(b), 0);
+              return data.labels.map((label, i) => {
+                const value = Number(data.datasets[0].data[i]) || 0;
+                const percentage = total > 0 ? (value / total) * 100 : 0;
+                const pctText = percentage > 0 && percentage < 1 ? '<1' : percentage.toFixed(0);
+                const truncatedLabel = label.length > 18 ? label.substring(0, 16) + '..' : label;
+                return {
+                  text: `${truncatedLabel} (${pctText}%)`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: '#ffffff',
+                  lineWidth: 1,
+                  hidden: false,
+                  index: i
+                };
+              });
+            }
+            return [];
+          }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((context.parsed / total) * 100).toFixed(1);
+            if (chartType === 'revenue' || chartType === 'budget') {
+              return `Revenue: ${formatCurrency(context.parsed)} (${percentage}%)`;
+            }
+            return `Schemes: ${context.parsed} (${percentage}%)`;
+          }
+        }
+      },
+      datalabels: {
+        color: '#fff',
+        font: { size: 12, weight: 'bold' },
+        formatter: (value, context) => {
+          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+          const percentage = ((value / total) * 100).toFixed(0);
+          return percentage >= 3 ? `${percentage}%` : '';
+        }
+      }
+    }
+  };
+
+  const barOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'x',
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          font: { size: 12, weight: '600' },
+          color: '#333'
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        padding: 12,
+        titleFont: { size: 12, weight: 'bold' },
+        bodyFont: { size: 11 },
+        callbacks: {
+          label: function(context) {
+            return `${context.dataset.label}: ${formatCurrency(context.parsed.y * 10000000)}`;
+          }
+        }
+      },
+      datalabels: {
+        color: '#fff',
+        anchor: 'center',
+        align: 'center',
+        font: { size: 9, weight: 'bold' },
+        formatter: function(value) {
+          return value > 0 ? value.toFixed(1) : '';
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          font: { size: 10, weight: '600' },
+          maxRotation: 45,
+          minRotation: 0
+        }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function(value) {
+            return formatCurrency(value * 10000000);
+          }
+        }
+      }
+    }
+  };
+
+  return (
+    <div>
+      {/* Summary Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '8px',
+        marginBottom: '12px'
+      }}>
+        {summaryCards.map((card, index) => (
+          <div key={index} style={{
+            backgroundColor: '#fff',
+            padding: '8px 10px',
+            borderRadius: '4px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div style={{ fontSize: '13px', color: '#666', fontWeight: '700' }}>
+              {card.label}
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: card.color }}>
+              {card.value}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div style={{
+        backgroundColor: '#fff',
+        padding: '12px',
+        borderRadius: '4px',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        marginBottom: '12px'
+      }}>
+        <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#333' }}>
+          {chartType === 'revenue' && 'HOD Revenue Distribution'}
+          {chartType === 'budget' && 'Budget Allocation by HOD'}
+          {chartType === 'schemes' && 'Schemes Distribution by HOD'}
+        </h3>
+        <div style={{ height: '320px' }}>
+          {chartType === 'budget' ? (
+            <Bar data={chartData} options={barOptions} plugins={[ChartDataLabels]} />
+          ) : (
+            <Pie data={chartData} options={pieOptions} plugins={[ChartDataLabels]} />
+          )}
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div style={{
+        backgroundColor: '#fff',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          padding: '15px 20px',
+          backgroundColor: '#f8f9fa',
+          borderBottom: '1px solid #e0e0e0'
+        }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', margin: 0, color: '#333' }}>
+            {chartType === 'revenue' && 'HOD Revenue Details'}
+            {chartType === 'budget' && 'Budget Details by HOD'}
+            {chartType === 'schemes' && 'Schemes Details by HOD'}
+          </h3>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
+                {chartType === 'revenue' && (
+                  <>
+                    <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: '#555' }}>HOD Name</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Revenue</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Percentage</th>
+                  </>
+                )}
+                {chartType === 'budget' && (
+                  <>
+                    <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: '#555' }}>Department</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Allocated</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Utilized</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Utilization %</th>
+                  </>
+                )}
+                {chartType === 'schemes' && (
+                  <>
+                    <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: '#555' }}>HOD Name</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Schemes Count</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Percentage</th>
+                  </>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {chartType === 'revenue' && revenueByHOD.map((item, index) => {
+                const total = revenueByHOD.reduce((sum, r) => sum + (parseFloat(r.revenue) || 0), 0);
+                const percentage = total > 0 ? ((parseFloat(item.revenue) || 0) / total * 100).toFixed(1) : 0;
+                return (
+                  <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 15px', fontWeight: '600', color: '#333' }}>{item.hod_name}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#1565c0' }}>{formatCurrency(parseFloat(item.revenue) || 0)}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 10px',
+                        backgroundColor: '#e8f5e9',
+                        color: '#2e7d32',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}>
+                        {percentage}%
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {chartType === 'budget' && budgetByHOD.map((item, index) => {
+                const allocated = parseFloat(item.allocated) || 0;
+                const utilized = parseFloat(item.utilized) || 0;
+                const utilization = allocated > 0 ? ((utilized / allocated) * 100).toFixed(1) : 0;
+                return (
+                  <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 15px', fontWeight: '600', color: '#333' }}>{item.department || item.hod_name}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#1565c0' }}>{formatCurrency(allocated)}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#2e7d32' }}>{formatCurrency(utilized)}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 10px',
+                        backgroundColor: utilization >= 75 ? '#e8f5e9' : utilization >= 50 ? '#fff3e0' : '#ffebee',
+                        color: utilization >= 75 ? '#2e7d32' : utilization >= 50 ? '#ef6c00' : '#c62828',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}>
+                        {utilization}%
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {chartType === 'schemes' && schemesByHOD.map((item, index) => {
+                const total = schemesByHOD.reduce((sum, s) => sum + (parseInt(s.scheme_count) || 0), 0);
+                const percentage = total > 0 ? ((parseInt(item.scheme_count) || 0) / total * 100).toFixed(1) : 0;
+                return (
+                  <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 15px', fontWeight: '600', color: '#333' }}>{item.hod_name}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#1565c0' }}>{item.scheme_count || 0}</td>
+                    <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 10px',
+                        backgroundColor: '#e8f5e9',
+                        color: '#2e7d32',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}>
+                        {percentage}%
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Scheme Insights Content Component
+const SchemeInsightsContent = ({ filters, allSchemes, allHODs }) => {
+  // Filter schemes based on filters
+  const filteredSchemes = allSchemes.filter(scheme => {
+    const matchDept = !filters.department || 
+      (scheme.category || scheme.department || '').toLowerCase().includes(filters.department.toLowerCase());
+    const matchYear = !filters.year || (scheme.year || scheme.financial_year) === filters.year;
+    const matchStatus = !filters.schemeStatus || 
+      (scheme.status || '').toLowerCase() === filters.schemeStatus.toLowerCase();
+    const matchHOD = !filters.hodId || 
+      scheme.hod_id === parseInt(filters.hodId) || 
+      (scheme.hod_name || '').toLowerCase() === allHODs.find(h => h.id === parseInt(filters.hodId))?.name?.toLowerCase();
+    
+    return matchDept && matchYear && matchStatus && matchHOD;
+  });
+
+  // Calculate summary statistics
+  const totalBudget = filteredSchemes.reduce((sum, s) => sum + (parseFloat(s.budget) || 0), 0);
+  const totalUtilized = filteredSchemes.reduce((sum, s) => sum + (parseFloat(s.utilized) || parseFloat(s.amount_spent) || 0), 0);
+  const totalPending = totalBudget - totalUtilized;
+  const totalBeneficiaries = filteredSchemes.reduce((sum, s) => sum + (parseInt(s.beneficiaries) || 0), 0);
+
+  // Group schemes by status for pie chart
+  const schemesByStatus = {};
+  filteredSchemes.forEach(scheme => {
+    const status = (scheme.status || 'active').toLowerCase();
+    if (!schemesByStatus[status]) {
+      schemesByStatus[status] = [];
+    }
+    schemesByStatus[status].push(scheme);
+  });
+
+  // Format currency helper function
+  const formatCurrency = (amount) => {
+    if (amount >= 10000000) {
+      return `₹${(amount / 10000000).toFixed(2)} Cr`;
+    } else if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(2)} L`;
+    }
+    return `₹${amount.toFixed(2)}`;
+  };
+
+  // Prepare chart data based on chartView
+  let schemesToDisplay = filteredSchemes;
+  
+  // Filter by state or central schemes
+  if (filters.chartView === 'stateSchemes') {
+    schemesToDisplay = filteredSchemes.filter(s => 
+      (s.scheme_type || s.type || '').toLowerCase().includes('state') ||
+      (s.category || s.department || '').toLowerCase().includes('state')
+    );
+  } else if (filters.chartView === 'centralSchemes') {
+    schemesToDisplay = filteredSchemes.filter(s => 
+      (s.scheme_type || s.type || '').toLowerCase().includes('central') ||
+      (s.category || s.department || '').toLowerCase().includes('central')
+    );
+  }
+  
+  const barChartData = filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes'
+    ? {
+        labels: schemesToDisplay.map(s => s.name || s.scheme_name || 'Unnamed'),
+        datasets: [{
+          label: 'Budget Amount',
+          data: schemesToDisplay.map(s => parseFloat(s.budget) || 0),
+          backgroundColor: schemesToDisplay.map((_, index) => {
+            const colors = ['#4CAF50', '#2196F3', '#FFC107', '#FF9800', '#9C27B0', '#00BCD4', '#E91E63'];
+            return colors[index % colors.length];
+          }),
+          borderWidth: 1,
+          borderColor: '#fff'
+        }]
+      }
+    : {
+        labels: Object.keys(schemesByStatus).map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+        datasets: [{
+          label: 'Number of Schemes',
+          data: Object.values(schemesByStatus).map(schemes => schemes.length),
+          backgroundColor: [
+            '#4CAF50', // Active - Green
+            '#2196F3', // Inactive - Blue
+            '#FFC107', // Planned - Yellow
+            '#FF9800', // Completed - Orange
+            '#9C27B0'  // Other - Purple
+          ],
+          borderWidth: 1,
+          borderColor: '#fff'
+        }]
+      };
+
+  const barOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') && schemesToDisplay.length > 5 ? 'y' : 'x',
+    plugins: {
+      legend: {
+        display: false
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            if (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') {
+              const amount = context.parsed.x || context.parsed.y;
+              return `Budget: ${formatCurrency(amount)}`;
+            } else {
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((context.parsed.y / total) * 100).toFixed(1);
+              return `Count: ${context.parsed.y} (${percentage}%)`;
+            }
+          }
+        }
+      },
+      datalabels: {
+        color: '#333',
+        font: { size: 10, weight: 'bold' },
+        anchor: 'end',
+        align: (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') && schemesToDisplay.length > 5 ? 'end' : 'top',
+        formatter: (value) => {
+          if (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') {
+            if (value >= 10000000) return `${(value / 10000000).toFixed(1)}Cr`;
+            if (value >= 100000) return `${(value / 100000).toFixed(1)}L`;
+            return value;
+          }
+          return value;
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') ? undefined : 1,
+          font: { size: (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') && schemesToDisplay.length > 5 ? 9 : 11 },
+          callback: function(value) {
+            if ((filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') && schemesToDisplay.length > 5) {
+              return this.getLabelForValue(value);
+            }
+            return value;
+          }
+        },
+        grid: {
+          color: '#f0f0f0'
+        }
+      },
+      x: {
+        ticks: {
+          font: { size: 11 },
+          maxRotation: (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') ? 45 : 0,
+          minRotation: (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') ? 45 : 0
+        },
+        grid: {
+          display: false
+        }
+      }
+    }
+  };
+
+  return (
+    <div>
+      {/* Summary Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '8px',
+        marginBottom: '12px'
+      }}>
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '8px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '16px', color: '#1565c0' }}><FiPieChart size={16} /></div>
+            <div>
+              <div style={{ fontSize: '13px', color: '#666', fontWeight: '700' }}>Budget</div>
+              <div style={{ fontSize: '11px', color: '#999', fontWeight: '600' }}>Schemes: {filteredSchemes.length}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#1565c0' }}>
+            {formatCurrency(totalBudget)}
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '8px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '16px', color: '#2e7d32' }}><FiCheckCircle size={16} /></div>
+            <div>
+              <div style={{ fontSize: '13px', color: '#666', fontWeight: '700' }}>Utilized</div>
+              <div style={{ fontSize: '11px', color: '#999', fontWeight: '600' }}>
+                {totalBudget > 0 ? `${((totalUtilized / totalBudget) * 100).toFixed(1)}%` : '0%'} Amount Spent
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#2e7d32' }}>
+            {formatCurrency(totalUtilized)}
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '8px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '16px', color: '#ef6c00' }}><BiWallet size={16} /></div>
+            <div>
+              <div style={{ fontSize: '13px', color: '#666', fontWeight: '700' }}>Pending</div>
+              <div style={{ fontSize: '11px', color: '#999', fontWeight: '600' }}>Scheme Sanction</div>
+            </div>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#ef6c00' }}>
+            {formatCurrency(totalPending)}
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '8px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '16px', color: '#7b1fa2' }}><FiUsers size={16} /></div>
+            <div>
+              <div style={{ fontSize: '13px', color: '#666', fontWeight: '700' }}>Beneficiaries</div>
+              <div style={{ fontSize: '11px', color: '#999', fontWeight: '600' }}>Default: 5,043</div>
+            </div>
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: '800', color: '#7b1fa2' }}>
+            {totalBeneficiaries.toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      {/* Charts and Table Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 280px',
+        gap: '12px',
+        marginBottom: '12px'
+      }}>
+        {/* Bar Chart */}
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '12px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+        }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#333' }}>
+            {filters.chartView === 'allSchemes' ? 'All Schemes Budget' : 
+             filters.chartView === 'stateSchemes' ? 'State Schemes Budget' :
+             filters.chartView === 'centralSchemes' ? 'Central Schemes Budget' :
+             'Schemes Overview'}
+          </h3>
+          <div style={{ height: (filters.chartView === 'allSchemes' || filters.chartView === 'stateSchemes' || filters.chartView === 'centralSchemes') && schemesToDisplay.length > 5 ? '400px' : '320px' }}>
+            <Bar data={barChartData} options={barOptions} plugins={[ChartDataLabels]} />
+          </div>
+        </div>
+
+        {/* Top Performers */}
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '12px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+        }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#333' }}>
+            Top Performers
+          </h3>
+          <div style={{ fontSize: '13px' }}>
+            {filteredSchemes
+              .sort((a, b) => (parseFloat(b.budget) || 0) - (parseFloat(a.budget) || 0))
+              .slice(0, 5)
+              .map((scheme, index) => (
+                <div key={index} style={{
+                  padding: '6px 8px',
+                  marginBottom: '6px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: '700', color: '#333', marginBottom: '2px', fontSize: '12px' }}>
+                      {scheme.name || scheme.scheme_name || 'Unnamed Scheme'}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#666', fontWeight: '500' }}>
+                      {scheme.category || scheme.department || 'General'}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: '800', color: '#1565c0', fontSize: '12px' }}>
+                      {formatCurrency(parseFloat(scheme.budget) || 0)}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#2e7d32', fontWeight: '600' }}>
+                      {scheme.utilization || '0'}% utilized
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Schemes Table */}
+      <div style={{
+        backgroundColor: '#fff',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          padding: '15px 20px',
+          backgroundColor: '#f8f9fa',
+          borderBottom: '1px solid #e0e0e0'
+        }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', margin: 0, color: '#333' }}>
+            Schemes Overview
+          </h3>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
+                <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: '#555' }}>Scheme</th>
+                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Active</th>
+                <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Budget</th>
+                <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#555' }}>Utilized</th>
+                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Utilization</th>
+                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredSchemes.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+                    No schemes found matching the selected filters
+                  </td>
+                </tr>
+              ) : (
+                filteredSchemes.map((scheme, index) => {
+                  const budget = parseFloat(scheme.budget) || 0;
+                  const utilized = parseFloat(scheme.utilized) || parseFloat(scheme.amount_spent) || 0;
+                  const utilization = budget > 0 ? ((utilized / budget) * 100).toFixed(0) : 0;
+                  const status = (scheme.status || 'active').toLowerCase();
+                  
+                  return (
+                    <tr key={index} style={{
+                      borderBottom: '1px solid #f0f0f0',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 15px' }}>
+                        <div style={{ fontWeight: '600', color: '#333', marginBottom: '2px' }}>
+                          {scheme.name || scheme.scheme_name || 'Unnamed'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#666' }}>
+                          {scheme.category || scheme.department || 'General'}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                        {scheme.scheme_id || scheme.id || '-'}
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#1565c0' }}>
+                        {formatCurrency(budget)}
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#2e7d32' }}>
+                        {formatCurrency(utilized)}
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '4px 10px',
+                          backgroundColor: utilization >= 75 ? '#e8f5e9' : utilization >= 50 ? '#fff3e0' : '#ffebee',
+                          color: utilization >= 75 ? '#2e7d32' : utilization >= 50 ? '#ef6c00' : '#c62828',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}>
+                          {utilization}%
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          backgroundColor: 
+                            status === 'active' ? '#e8f5e9' :
+                            status === 'completed' ? '#e3f2fd' :
+                            status === 'planned' ? '#fff3e0' : '#f5f5f5',
+                          color:
+                            status === 'active' ? '#2e7d32' :
+                            status === 'completed' ? '#1565c0' :
+                            status === 'planned' ? '#ef6c00' : '#666'
+                        }}>
+                          {status === 'active' ? '✓ On Track' :
+                           status === 'completed' ? '✓ Completed' :
+                           status === 'planned' ? 'Planned' : status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Attendance Insights Content Component
+const AttendanceInsightsContent = ({ filters, allAttendance, allHODs, stats }) => {
+  // Filter attendance based on filters
+  const filteredAttendance = allAttendance.filter(record => {
+    const matchHOD = !filters.hodId || record.hod_id === parseInt(filters.hodId) || 
+      (record.hod_name || '').toLowerCase() === allHODs.find(h => h.id === parseInt(filters.hodId))?.name?.toLowerCase();
+    
+    return matchHOD;
+  });
+
+  // Calculate attendance statistics
+  const totalPresent = filteredAttendance.reduce((sum, r) => sum + (parseInt(r.present) || 0), 0);
+  const totalAbsent = filteredAttendance.reduce((sum, r) => sum + (parseInt(r.absent) || 0), 0);
+  const totalLate = filteredAttendance.reduce((sum, r) => sum + (parseInt(r.late) || 0), 0);
+  const totalLeave = filteredAttendance.reduce((sum, r) => sum + (parseInt(r.on_leave) || 0), 0);
+  const totalStaff = totalPresent + totalAbsent + totalLate + totalLeave;
+
+  // Prepare pie chart data for attendance status
+  const attendancePieChartData = {
+    labels: ['Present', 'Absent', 'Late', 'Leave'],
+    datasets: [{
+      data: [totalPresent, totalAbsent, totalLate, totalLeave],
+      backgroundColor: [
+        '#4CAF50', // Present - Green
+        '#F44336', // Absent - Red
+        '#FF9800', // Late - Orange
+        '#2196F3'  // Leave - Blue
+      ],
+      borderWidth: 2,
+      borderColor: '#fff'
+    }]
+  };
+
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: {
+          padding: 15,
+          usePointStyle: true,
+          font: { size: 12 }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: function(context) {
+            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+            const percentage = ((context.parsed / total) * 100).toFixed(1);
+            return `${context.label}: ${context.parsed} (${percentage}%)`;
+          }
+        }
+      },
+      datalabels: {
+        color: '#fff',
+        font: { size: 14, weight: 'bold' },
+        formatter: (value, context) => {
+          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+          const percentage = ((value / total) * 100).toFixed(0);
+          return percentage > 5 ? `${percentage}%` : '';
+        }
+      }
+    }
+  };
+
+  return (
+    <div>
+      {/* Summary Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+        gap: '8px',
+        marginBottom: '12px'
+      }}>
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '8px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '50%', 
+              border: '1px solid #4CAF50',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#4CAF50'
+            }}>
+              <FiCheckCircle size={16} />
+            </div>
+            <span style={{ fontSize: '13px', color: '#333', fontWeight: '700' }}>Present</span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: '#4CAF50', lineHeight: '1' }}>
+              {totalPresent}
+            </div>
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px', fontWeight: '600' }}>Staff</div>
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '8px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '50%', 
+              border: '1px solid #F44336',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#F44336'
+            }}>
+              <FiUsers size={16} />
+            </div>
+            <span style={{ fontSize: '13px', color: '#333', fontWeight: '700' }}>Absent</span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: '#F44336', lineHeight: '1' }}>
+              {totalAbsent}
+            </div>
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px', fontWeight: '600' }}>Staff</div>
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '8px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '50%', 
+              border: '1px solid #FF9800',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FF9800'
+            }}>
+              <FiActivity size={16} />
+            </div>
+            <span style={{ fontSize: '13px', color: '#333', fontWeight: '700' }}>Late</span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: '#FF9800', lineHeight: '1' }}>
+              {totalLate}
+            </div>
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px', fontWeight: '600' }}>Staff</div>
+          </div>
+        </div>
+
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '8px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '50%', 
+              border: '1px solid #2196F3',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#2196F3'
+            }}>
+              <BiWallet size={16} />
+            </div>
+            <span style={{ fontSize: '13px', color: '#333', fontWeight: '700' }}>Leave</span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '24px', fontWeight: '800', color: '#2196F3', lineHeight: '1' }}>
+              {totalLeave}
+            </div>
+            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px', fontWeight: '600' }}>Staff</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts and Table Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 300px',
+        gap: '12px',
+        marginBottom: '12px'
+      }}>
+        {/* Pie Chart */}
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '12px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+        }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#333' }}>
+            Attendance Overview
+          </h3>
+          <div style={{ height: '320px' }}>
+            <Pie data={attendancePieChartData} options={pieOptions} plugins={[ChartDataLabels]} />
+          </div>
+        </div>
+
+        {/* Top Performers */}
+        <div style={{
+          backgroundColor: '#fff',
+          padding: '12px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+        }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '12px', color: '#333' }}>
+            Attendance Rate
+          </h3>
+          <div style={{ fontSize: '13px' }}>
+            <div style={{
+              padding: '6px 8px',
+              marginBottom: '6px',
+              backgroundColor: '#e8f5e9',
+              borderRadius: '4px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontWeight: '700', color: '#333', marginBottom: '2px', fontSize: '12px' }}>
+                  Present
+                </div>
+                <div style={{ fontSize: '10px', color: '#666', fontWeight: '500' }}>
+                  Staff present
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: '800', color: '#4CAF50', fontSize: '17px' }}>
+                  {totalStaff > 0 ? ((totalPresent / totalStaff) * 100).toFixed(1) : 0}%
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '6px 8px',
+              marginBottom: '6px',
+              backgroundColor: '#ffebee',
+              borderRadius: '4px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontWeight: '700', color: '#333', marginBottom: '2px', fontSize: '12px' }}>
+                  Absent
+                </div>
+                <div style={{ fontSize: '10px', color: '#666', fontWeight: '500' }}>
+                  Staff absent
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: '800', color: '#F44336', fontSize: '17px' }}>
+                  {totalStaff > 0 ? ((totalAbsent / totalStaff) * 100).toFixed(1) : 0}%
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '6px 8px',
+              marginBottom: '6px',
+              backgroundColor: '#fff3e0',
+              borderRadius: '4px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontWeight: '700', color: '#333', marginBottom: '2px', fontSize: '12px' }}>
+                  Late
+                </div>
+                <div style={{ fontSize: '10px', color: '#666', fontWeight: '500' }}>
+                  Coming late
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: '800', color: '#FF9800', fontSize: '17px' }}>
+                  {totalStaff > 0 ? ((totalLate / totalStaff) * 100).toFixed(1) : 0}%
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '6px 8px',
+              backgroundColor: '#e3f2fd',
+              borderRadius: '4px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontWeight: '700', color: '#333', marginBottom: '2px', fontSize: '12px' }}>
+                  Leave
+                </div>
+                <div style={{ fontSize: '10px', color: '#666', fontWeight: '500' }}>
+                  Staff on leave
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontWeight: '800', color: '#2196F3', fontSize: '17px' }}>
+                  {totalStaff > 0 ? ((totalLeave / totalStaff) * 100).toFixed(1) : 0}%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* HOD-wise Attendance Table */}
+      <div style={{
+        backgroundColor: '#fff',
+        borderRadius: '8px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          padding: '15px 20px',
+          backgroundColor: '#f8f9fa',
+          borderBottom: '1px solid #e0e0e0'
+        }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', margin: 0, color: '#333' }}>
+            HOD-wise Attendance
+          </h3>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #e0e0e0' }}>
+                <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: '#555' }}>HOD/Department</th>
+                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Present</th>
+                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Absent</th>
+                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Late</th>
+                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Leave</th>
+                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#555' }}>Attendance %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAttendance.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+                    No attendance records found
+                  </td>
+                </tr>
+              ) : (
+                filteredAttendance.map((record, index) => {
+                  const total = (parseInt(record.present) || 0) + (parseInt(record.absent) || 0) + 
+                               (parseInt(record.late) || 0) + (parseInt(record.on_leave) || 0);
+                  const attendancePercent = total > 0 ? (((parseInt(record.present) || 0) / total) * 100).toFixed(1) : 0;
+                  
+                  return (
+                    <tr key={index} style={{
+                      borderBottom: '1px solid #f0f0f0',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 15px' }}>
+                        <div style={{ fontWeight: '600', color: '#333' }}>
+                          {record.hod_name || record.department || 'General'}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#4CAF50' }}>
+                        {record.present || 0}
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#F44336' }}>
+                        {record.absent || 0}
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#FF9800' }}>
+                        {record.late || 0}
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: '#2196F3' }}>
+                        {record.on_leave || 0}
+                      </td>
+                      <td style={{ padding: '12px 15px', textAlign: 'center' }}>
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '4px 10px',
+                          backgroundColor: attendancePercent >= 75 ? '#e8f5e9' : attendancePercent >= 50 ? '#fff3e0' : '#ffebee',
+                          color: attendancePercent >= 75 ? '#2e7d32' : attendancePercent >= 50 ? '#ef6c00' : '#c62828',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}>
+                          {attendancePercent}%
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

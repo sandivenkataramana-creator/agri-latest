@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
+// ============ IMPORTANT: SPECIFIC ROUTES MUST COME BEFORE PARAMETERIZED ROUTES ============
+// This ensures /available-years, /financial-progress, /budget-allocations/all, etc.
+// are matched before /:id
+
 // Get available financial years
 router.get('/available-years', async (req, res) => {
   try {
@@ -18,49 +22,8 @@ router.get('/available-years', async (req, res) => {
   }
 });
 
-// Get all schemes with budget allocation
-router.get('/', async (req, res) => {
-  try {
-    try {
-      const [results] = await db.query(`
-        SELECT 
-          s.id,
-          s.scheme_name,
-          s.central_scheme_name,
-          s.hod AS hod_name,
-          s.financial_year,
-          s.status,
-          COALESCE(SUM(sba.allocated_amount), 0) AS budget_allocated,
-          COALESCE(SUM(sba.spent_amount), 0) AS budget_utilized
-        FROM schemes s
-        LEFT JOIN scheme_budget_allocation sba ON s.id = sba.scheme_id
-        GROUP BY s.id
-        ORDER BY s.scheme_name
-      `);
-      return res.json(results);
-    } catch (innerErr) {
-      console.warn('Primary schemes query failed, falling back to simplified schema:', innerErr.message);
-      const [fallback] = await db.query(`
-        SELECT 
-          id,
-          scheme_name,
-          central_scheme_name,
-          hod AS hod_name,
-          financial_year,
-          status,
-          0 AS budget_allocated,
-          0 AS budget_utilized
-        FROM schemes
-        ORDER BY scheme_name
-      `);
-      return res.json(fallback);
-    }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Get consolidated financial progress (CSS report style)
+// MUST come before /:id route
 router.get('/financial-progress', async (req, res) => {
   try {
     let year = req.query.year || '2025-26';
@@ -129,47 +92,40 @@ router.get('/financial-progress', async (req, res) => {
       console.warn('Primary financial-progress query failed:', innerErr.message);
       console.warn('Query error code:', innerErr.code);
       
-      // Try simpler fallback query with only basic columns
-      try {
-        const [fallbackResults] = await db.query(
-          `SELECT
-             id,
-             scheme_name,
-             COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
-             hod,
-             NULL AS hod_id,
-             financial_year,
-             0 AS allocation_goi_share,
-             0 AS allocation_state_share,
-             0 AS allocation_total,
-             0 AS slsc_goi_share,
-             0 AS slsc_state_share,
-             0 AS slsc_total,
-             0 AS sanction_goi_share,
-             0 AS sanction_state_share,
-             0 AS sanction_total,
-             0 AS bro_released_amount,
-             0 AS dt_authorized_amount,
-             0 AS bills_preferred_count,
-             0 AS bills_preferred_amount,
-             NULL AS oldest_bill_date,
-             0 AS bills_cleared_count,
-             0 AS bills_cleared_amount,
-             NULL AS latest_bill_date,
-             NULL AS remark
-           FROM schemes
-           ${whereClause}
-           ORDER BY scheme_name;
-          `,
-          params
-        );
-        console.log('Fallback financial-progress query succeeded:', { year, hodId, count: fallbackResults.length });
-        return res.json(fallbackResults);
-      } catch (fallbackErr) {
-        console.error('FALLBACK ALSO FAILED. Primary error:', innerErr.message);
-        console.error('Fallback error:', fallbackErr.message);
-        throw fallbackErr; // This will be caught by the outer catch
-      }
+      const [fallbackResults] = await db.query(
+        `SELECT
+           id,
+           scheme_name,
+           COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
+           hod,
+           NULL AS hod_id,
+           financial_year,
+           0 AS allocation_goi_share,
+           0 AS allocation_state_share,
+           0 AS allocation_total,
+           0 AS slsc_goi_share,
+           0 AS slsc_state_share,
+           0 AS slsc_total,
+           0 AS sanction_goi_share,
+           0 AS sanction_state_share,
+           0 AS sanction_total,
+           0 AS bro_released_amount,
+           0 AS dt_authorized_amount,
+           0 AS bills_preferred_count,
+           0 AS bills_preferred_amount,
+           NULL AS oldest_bill_date,
+           0 AS bills_cleared_count,
+           0 AS bills_cleared_amount,
+           NULL AS latest_bill_date,
+           NULL AS remark
+         FROM schemes
+         ${whereClause}
+         ORDER BY scheme_name;
+        `,
+        params
+      );
+      console.log('Fallback financial-progress query result:', { year, hodId, count: fallbackResults.length });
+      return res.json(fallbackResults);
     }
   } catch (error) {
     console.error('FATAL Error in financial-progress endpoint:', error.message);
@@ -182,6 +138,7 @@ router.get('/financial-progress', async (req, res) => {
 });
 
 // Get scheme by ID with full details
+// MUST come AFTER specific routes like /financial-progress
 router.get('/:id', async (req, res) => {
   try {
     const [results] = await db.query(`
@@ -201,6 +158,49 @@ router.get('/:id', async (req, res) => {
     );
     
     res.json({ ...results[0], budget_allocations: budgetAllocations });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all schemes with budget allocation
+// Comes after specific /:id route above
+router.get('/', async (req, res) => {
+  try {
+    try {
+      const [results] = await db.query(`
+        SELECT 
+          s.id,
+          s.scheme_name,
+          s.central_scheme_name,
+          s.hod AS hod_name,
+          s.financial_year,
+          s.status,
+          COALESCE(SUM(sba.allocated_amount), 0) AS budget_allocated,
+          COALESCE(SUM(sba.spent_amount), 0) AS budget_utilized
+        FROM schemes s
+        LEFT JOIN scheme_budget_allocation sba ON s.id = sba.scheme_id
+        GROUP BY s.id
+        ORDER BY s.scheme_name
+      `);
+      return res.json(results);
+    } catch (innerErr) {
+      console.warn('Primary schemes query failed, falling back to simplified schema:', innerErr.message);
+      const [fallback] = await db.query(`
+        SELECT 
+          id,
+          scheme_name,
+          central_scheme_name,
+          hod AS hod_name,
+          financial_year,
+          status,
+          0 AS budget_allocated,
+          0 AS budget_utilized
+        FROM schemes
+        ORDER BY scheme_name
+      `);
+      return res.json(fallback);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

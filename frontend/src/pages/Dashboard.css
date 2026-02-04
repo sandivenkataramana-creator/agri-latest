@@ -2,16 +2,17 @@
    DASHBOARD PAGE STYLES
 ========================= */
 
-
 /* Page Container */
 .page-container {
   padding: 0;
-  background-color: #f6f7f4; /* govt neutral */
+  background-color: #F4F7F8;          /* govt light grey */
   height: 100vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  color: #1F2D33;
+  font-family: "Segoe UI", Arial, sans-serif;
 }
 
 /* =========================
@@ -25,8 +26,8 @@
 }
 
 .spinner {
-  border: 4px solid #e0e0e0;
-  border-top: 4px solid #2e8b57; /* agriculture green */
+  border: 4px solid #D6DEE2;
+  border-top: 4px solid #355F6B;      /* teal primary */
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -45,8 +46,8 @@
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
   flex-shrink: 0;
 }
 
@@ -54,22 +55,21 @@
    STAT CARD
 ========================= */
 .stat-card {
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 8px;
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: 10px;
   display: flex;
-  gap: 8px;
-  border-left: 4px solid #2e8b57;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  gap: 10px;
+  border-left: 4px solid #355F6B;     /* teal accent */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .stat-card.clickable {
   cursor: pointer;
 }
 
-/* Removed excessive hover animation (govt-safe) */
 .stat-card:hover {
-  background-color: #fafafa;
+  background-color: #F1F5F7;
 }
 
 /* =========================
@@ -77,19 +77,19 @@
    (Controlled, Official)
 ========================= */
 .stat-card.green {
-  border-left-color: #2e8b57;
+  border-left-color: #4B8B7D;         /* muted govt green */
 }
 
 .stat-card.blue {
-  border-left-color: #1f6f43;
+  border-left-color: #355F6B;         /* teal */
 }
 
 .stat-card.orange {
-  border-left-color: #c28f2c;
+  border-left-color: #C28F2C;         /* muted amber */
 }
 
 .stat-card.teal {
-  border-left-color: #3b7a78;
+  border-left-color: #3F6F73;         /* deep teal */
 }
 
 /* =========================
@@ -103,8 +103,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background-color: #e6f4ec;
-  color: #1f6f43;
+  background-color: #E7F1F3;
+  color: #355F6B;
 }
 
 /* =========================
@@ -118,13 +118,13 @@
   margin: 0 0 3px;
   font-size: 18px;
   font-weight: 700;
-  color: #1a1a1a;
+  color: #355F6B;                 /* teal heading */
 }
 
 .stat-info p {
   margin: 0 0 4px;
   font-size: 11px;
-  color: #555555;
+  color: #5E6E73;                 /* govt muted grey */
 }
 
 /* =========================
@@ -138,7 +138,7 @@
 }
 
 .trend.up {
-  color: #2e8b57;
+  color: #4B8B7D;                 /* muted govt green */
 }
 
 /* =========================
@@ -147,8 +147,8 @@
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
   flex-shrink: 0;
 }
 
@@ -162,14 +162,16 @@
    CHART CARD
 ========================= */
 .chart-card {
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #D6DEE2;
 }
 
 .chart-card-body {
   position: relative;
+  overflow-x: auto;
 }
 
 /* Custom scrollbar for chart containers */
@@ -179,17 +181,17 @@
 }
 
 .chart-card-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #F1F5F7;
   border-radius: 3px;
 }
 
 .chart-card-body::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #9FB3B9;
   border-radius: 3px;
 }
 
 .chart-card-body::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #7A8A90;
 }
 
 .chart-card-header {
@@ -202,8 +204,8 @@
 .chart-card-header h3 {
   margin: 0;
   font-size: 12px;
-  font-weight: 600;
-  color: #1a1a1a;
+  font-weight: 700;
+  color: #355F6B;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -211,12 +213,8 @@
 
 .chart-card-header h3 span {
   font-size: 12px;
-  color: #666666;
+  color: #5E6E73;
   font-weight: normal;
-}
-
-.chart-card-body {
-  overflow-x: auto;
 }
 
 /* =========================
@@ -231,13 +229,12 @@
 .chart-container.large {
   height: 220px;
 }
-
 /* =========================
    CHART FILTER DROPDOWN
 ========================= */
 .chart-filter-dropdown {
-  background-color: #ffffff;
-  border: 1px solid #d6d6d6;
+  background-color: #FFFFFF;
+  border: 1px solid #D6DEE2;
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   min-width: 200px;
@@ -245,24 +242,27 @@
 
 .dropdown-header {
   padding: 8px 12px;
-  border-bottom: 1px solid #e0e0e0;
-  font-weight: 600;
+  border-bottom: 1px solid #E5E7EB;
+  font-weight: 700;
   font-size: 13px;
+  color: #355F6B;
 }
 
 .dropdown-item {
   padding: 8px 12px;
   font-size: 13px;
   cursor: pointer;
+  color: #1F2D33;
 }
 
 .dropdown-item:hover {
-  background-color: #f4f6f4;
+  background-color: #F1F5F7;
 }
 
 .dropdown-item.selected {
-  background-color: #e6f4ec;
-  color: #1f6f43;
+  background-color: #E7F1F3;
+  color: #355F6B;
+  font-weight: 600;
 }
 
 /* =========================
@@ -274,6 +274,7 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
+  color: #1F2D33;
 }
 
 .legend-color,
@@ -283,16 +284,17 @@
   border-radius: 3px;
 }
 
+/* Muted, govt-safe chart colors */
 .status-completed {
-  background-color: rgba(46, 139, 87, 0.85);
+  background-color: rgba(53, 95, 107, 0.85);   /* teal */
 }
 
 .status-planned {
-  background-color: rgba(194, 143, 44, 0.85);
+  background-color: rgba(194, 143, 44, 0.85); /* muted amber */
 }
 
 .status-active {
-  background-color: rgba(31, 111, 67, 0.85);
+  background-color: rgba(75, 139, 125, 0.85); /* govt green */
 }
 
 .status-default {
@@ -308,21 +310,22 @@
 }
 
 .filter-icon.active {
-  color: #2e8b57;
+  color: #355F6B;
 }
 
 .filter-icon.inactive {
-  color: #666666;
+  color: #7A8A90;
 }
 
 /* =========================
    BUDGET BY HOD CHART STYLES
 ========================= */
 .budget-hod-container {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: #FFFFFF;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #D6DEE2;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   grid-column: 1 / -1;
   margin-bottom: 14px;
 }
@@ -331,23 +334,23 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
   gap: 12px;
 }
 
 .budget-hod-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: #355F6B;
   flex-grow: 1;
 }
 
 .chart-filter-button {
-  padding: 8px 16px;
-  background: rgb(101, 148, 113);
-  color: #ffffff;
+  padding: 8px 14px;
+  background: #355F6B;
+  color: #FFFFFF;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -356,15 +359,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: background 0.2s ease;
   white-space: nowrap;
 }
 
 .chart-filter-button:hover {
-  background: rgb(76, 130, 82);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  transform: translateY(-1px);
+  background: #27464F;
 }
 
 .chart-filter-button:active {
@@ -376,7 +376,7 @@
   max-height: 600px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-top: 20px;
+  padding-top: 16px;
 }
 
 .chart-box.large {
@@ -391,17 +391,17 @@
 }
 
 .budget-chart-wrapper::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #F1F5F7;
   border-radius: 10px;
 }
 
 .budget-chart-wrapper::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #9FB3B9;
   border-radius: 10px;
 }
 
 .budget-chart-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #7A8A90;
 }
 
 /* =========================

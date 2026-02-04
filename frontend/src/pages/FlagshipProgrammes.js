@@ -7,6 +7,7 @@ import {
   deleteFlagshipProgramme,
   exportFlagshipProgrammesCSV
 } from '../services/api';
+import appConfig from '../config/appConfig';
 import * as XLSX from 'xlsx';
 import api from '../services/api';
 
@@ -44,7 +45,7 @@ const FlagshipProgrammes = () => {
       setLoading(true);
       // Use uploads API for all flagship uploads
       const token = JSON.parse(localStorage.getItem('user') || '{}').token;
-      let url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/flagship-programs`;
+      let url = `${appConfig.apiBaseUrl}/uploads/flagship-programs`;
       if (!isHOD && selectedDepartment) {
         url += `?department=${encodeURIComponent(selectedDepartment)}`;
       }
@@ -336,7 +337,7 @@ const FlagshipProgrammes = () => {
                   <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                     <button
                       onClick={async () => {
-                        const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${item.id}`;
+                        const url = `${appConfig.apiBaseUrl}/uploads/download/${item.id}`;
                         const response = await fetch(url, {
                           headers: { 'Authorization': `Bearer ${user.token}` }
                         });
@@ -409,7 +410,7 @@ const FlagshipProgrammes = () => {
                     <td style={{ padding: '12px', textAlign: 'center' }}>
                       <button
                         onClick={async () => {
-                          const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/uploads/download/${item.id}`;
+                          const url = `${appConfig.apiBaseUrl}/uploads/download/${item.id}`;
                           const response = await fetch(url, {
                             headers: { 'Authorization': `Bearer ${user.token}` }
                           });

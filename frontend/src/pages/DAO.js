@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiDownload, FiUpload } from 'react-icons/fi';
+import appConfig from '../config/appConfig';
 
 const DAO = () => {
   const [daos, setDAOs] = useState([]);
@@ -26,8 +27,8 @@ const DAO = () => {
     try {
       setLoading(true);
       const url = isHOD 
-        ? `http://localhost:5000/api/dao?hodId=${userHodId}`
-        : 'http://localhost:5000/api/dao';
+        ? `${appConfig.apiBaseUrl}/dao?hodId=${userHodId}`
+        : `${appConfig.apiBaseUrl}/dao`;
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
@@ -91,7 +92,7 @@ const DAO = () => {
     try {
       if (editingId) {
         // Update DAO
-        const response = await fetch(`http://localhost:5000/api/dao/${editingId}`, {
+        const response = await fetch(`${appConfig.apiBaseUrl}/dao/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify(formData)
@@ -102,7 +103,7 @@ const DAO = () => {
         alert('DAO updated successfully');
       } else {
         // Create DAO
-        const response = await fetch('http://localhost:5000/api/dao', {
+        const response = await fetch(`${appConfig.apiBaseUrl}/dao`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify(formData)
@@ -124,7 +125,7 @@ const DAO = () => {
     if (isReadOnly) return;
     if (window.confirm('Are you sure you want to delete this DAO?')) {
       try {
-        const response = await fetch(`http://localhost:5000/api/dao/${id}`, {
+        const response = await fetch(`${appConfig.apiBaseUrl}/dao/${id}`, {
           method: 'DELETE',
           headers: { ...getAuthHeaders() }
         });

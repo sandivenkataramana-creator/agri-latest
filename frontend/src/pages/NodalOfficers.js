@@ -3,6 +3,7 @@ import Header from '../components/Header';
 import Modal from '../components/Modal';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { getNodalOfficers, createNodalOfficer, updateNodalOfficer, deleteNodalOfficer, getSchemes } from '../services/api';
+import appConfig from '../config/appConfig';
 import './NodalOfficers.css';
 
 const NodalOfficers = () => {
@@ -45,7 +46,7 @@ const NodalOfficers = () => {
       const [officersRes, schemesRes, statesRes] = await Promise.all([
         getNodalOfficers(),
         getSchemes(),
-        fetch('http://localhost:5000/api/locations/states').then(r => r.json())
+        fetch(`${appConfig.apiBaseUrl}/locations/states`).then(r => r.json())
       ]);
       console.log('Fetched officers:', officersRes.data);
       console.log('Fetched schemes:', schemesRes.data);
@@ -140,7 +141,7 @@ const NodalOfficers = () => {
   const fetchDistricts = async (stateId) => {
     try {
       console.log('Fetching districts');
-      const response = await fetch(`http://localhost:5000/api/locations/districts`);
+      const response = await fetch(`${appConfig.apiBaseUrl}/locations/districts`);
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }
@@ -156,7 +157,7 @@ const NodalOfficers = () => {
   const fetchMandals = async (districtId) => {
     try {
       console.log('Fetching mandals for district:', districtId);
-      const response = await fetch(`http://localhost:5000/api/locations/mandals/${districtId}`);
+      const response = await fetch(`${appConfig.apiBaseUrl}/locations/mandals/${districtId}`);
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
       }

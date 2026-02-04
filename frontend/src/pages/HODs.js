@@ -4,9 +4,11 @@ import Modal from '../components/Modal';
 import { FiPlus, FiEdit2, FiTrash2, FiMail } from 'react-icons/fi';
 import { getHODs, createHOD, updateHOD, deleteHOD, getCategories, createCategory } from '../services/api';
 import axios from 'axios';
+import appConfig from '../config/appConfig';
 
 const HODs = () => {
   const [hods, setHODs] = useState([]);
+  const [filteredHods, setFilteredHods] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,6 +17,8 @@ const HODs = () => {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [editingHod, setEditingHod] = useState(null);
   const [passwordData, setPasswordData] = useState({ hodId: null, password: '' });
+  const [searchText, setSearchText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     department: '',
@@ -37,6 +41,20 @@ const HODs = () => {
     fetchCategories();
   }, []);
 
+  // Update filtered list whenever data or query changes
+  useEffect(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      setFilteredHods(hods);
+    } else {
+      setFilteredHods(
+        hods.filter(h => (h.name || '').toLowerCase().includes(q))
+      );
+    }
+    // Reset pagination on new search
+    setCurrentPage(0);
+  }, [hods, searchQuery]);
+
   const fetchHODs = async () => {
     try {
       setLoading(true);
@@ -49,6 +67,15 @@ const HODs = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleApplySearch = () => {
+    setSearchQuery(searchText);
+  };
+
+  const handleClearSearch = () => {
+    setSearchText('');
+    setSearchQuery('');
   };
 
   const fetchCategories = async () => {
@@ -155,7 +182,7 @@ const HODs = () => {
       
       // Create the user account with auto-generated password
       const accountResponse = await axios.post(
-        `http://localhost:5000/api/hods/${passwordData.hodId}/create-account`,
+        `${appConfig.apiBaseUrl}/hods/${passwordData.hodId}/create-account`,
         {}, // No password needed - backend will auto-generate
         {
           headers: {
@@ -203,12 +230,31 @@ const HODs = () => {
 
       <div className="table-card">
         <div className="table-header">
-          <h3>HOD's ({hods.length})</h3>
-          {!isReadOnly && (
-            <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-              <FiPlus /> Add HOD
-            </button>
-          )}
+          <h3>HOD's ({filteredHods.length})</h3>
+          <div>
+            <div className="search-controls">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search HODs by name"
+                value={searchText}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchText(value);
+                  setSearchQuery(value);
+                }}
+              />
+              <button className="btn btn-secondary" onClick={handleApplySearch}>Search</button>
+              {searchQuery && (
+                <button className="btn btn-secondary" onClick={handleClearSearch}>Clear</button>
+              )}
+            </div>
+            {!isReadOnly && (
+              <button className="btn btn-primary" onClick={() => handleOpenModal()}>
+                <FiPlus /> Add HOD
+              </button>
+            )}
+          </div>
         </div>
         <div className="table-wrapper">
           <table>

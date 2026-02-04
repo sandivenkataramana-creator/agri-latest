@@ -83,10 +83,10 @@ router.get('/hod/:hodId', async (req, res) => {
 // Create staff
 router.post('/', ...superAdminOnly, async (req, res) => {
   try {
-    const { name, employee_id, designation, department, category_id, hod_id, email, phone, joining_date, status } = req.body;
+    const { name, employee_id, designation, section, department, category_id, hod_id, email, phone, location, joining_date, status } = req.body;
     const [result] = await db.query(
-      'INSERT INTO staff (name, employee_id, designation, department, category_id, hod_id, email, phone, joining_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, employee_id, designation, department, category_id || null, hod_id, email, phone, joining_date, status || 'active']
+      'INSERT INTO staff (name, employee_id, designation, section, department, category_id, hod_id, email, phone, location, joining_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, employee_id, designation, section || null, department || null, category_id || null, hod_id || null, email || null, phone || null, location || null, joining_date || null, status || 'active']
     );
     res.status(201).json({ id: result.insertId, message: 'Staff created successfully' });
   } catch (error) {
@@ -187,10 +187,10 @@ router.post('/:id/create-account', ...superAdminOnly, async (req, res) => {
 // Update staff
 router.put('/:id', ...superAdminOnly, async (req, res) => {
   try {
-    const { name, employee_id, designation, department, hod_id, email, phone, joining_date, status } = req.body;
+    const { name, employee_id, designation, section, department, hod_id, email, phone, location, joining_date, status } = req.body;
     await db.query(
-      'UPDATE staff SET name = ?, employee_id = ?, designation = ?, department = ?, hod_id = ?, email = ?, phone = ?, joining_date = ?, status = ? WHERE id = ?',
-      [name, employee_id, designation, department, hod_id, email, phone, joining_date, status, req.params.id]
+      'UPDATE staff SET name = ?, employee_id = ?, designation = ?, section = ?, department = ?, hod_id = ?, email = ?, phone = ?, location = ?, joining_date = ?, status = ? WHERE id = ?',
+      [name, employee_id, designation, section || null, department || null, hod_id || null, email || null, phone || null, location || null, joining_date || null, status || 'active', req.params.id]
     );
     res.json({ message: 'Staff updated successfully' });
   } catch (error) {

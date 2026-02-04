@@ -4,6 +4,7 @@ import Modal from '../components/Modal';
 import { FiPlus, FiUpload, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import { createScheme, updateScheme, deleteScheme, getHODs, getCategories } from '../services/api';
+import appConfig from '../config/appConfig';
 import './Schemes.css';
 
 const Schemes = () => {
@@ -67,7 +68,7 @@ const Schemes = () => {
   useEffect(() => {
     const fetchAvailableYears = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/schemes/available-years');
+        const response = await fetch(`${appConfig.apiBaseUrl}/schemes/available-years`);
         const years = await response.json();
         setAvailableYears(years);
         // Set first available year if exists and not already set
@@ -119,7 +120,7 @@ const Schemes = () => {
       const [hodsRes, categoriesRes, financialRes] = await Promise.all([
         isHOD ? Promise.resolve({ data: [] }) : getHODs(),
         getCategories(),
-        fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`) // Add cache-buster
+        fetch(`${appConfig.apiBaseUrl}/schemes/financial-progress?year=${financialYear}&_t=${Date.now()}`) // Add cache-buster
           .then(res => res.json())
           .catch(err => {
             console.error('Error fetching financial progress:', err);
@@ -145,7 +146,7 @@ const Schemes = () => {
 
   const fetchStateSchemeData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/all?year=${financialYear}&_t=${Date.now()}`);
+      const response = await fetch(`${appConfig.apiBaseUrl}/schemes/state-schemes/all?year=${financialYear}&_t=${Date.now()}`);
       const data = await response.json();
      const sorted = sortByName(data, 'name', 'asc');
 setStateSchemeData(sorted);
@@ -159,7 +160,7 @@ setStateSchemeData(sorted);
 
   const fetchRevenueData = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/revenue/all?year=${financialYear}&_t=${Date.now()}`);
+      const response = await fetch(`${appConfig.apiBaseUrl}/schemes/revenue/all?year=${financialYear}&_t=${Date.now()}`);
       const data = await response.json();
       const sorted = sortByName(data, 'cooperativeName', 'asc');
 setRevenueData(sorted);
@@ -178,7 +179,7 @@ const fetchCentralSchemes = async (year = financialYear) => {
   try {
     const hodParam = isHOD ? `&hodId=${userHodId}` : '';
     const res = await fetch(
-      `http://localhost:5000/api/schemes/financial-progress?year=${year}&_t=${Date.now()}`
+      `${appConfig.apiBaseUrl}/schemes/financial-progress?year=${year}&_t=${Date.now()}`
     );
     const data = await res.json();
 
@@ -444,7 +445,7 @@ const sortByName = (data, key, order = 'asc') => {
     const ok = window.confirm('Are you sure you want to delete this state scheme?');
     if (!ok) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/state-schemes/${row.id}`, {
+      const response = await fetch(`${appConfig.apiBaseUrl}/schemes/state-schemes/${row.id}`, {
         method: 'DELETE'
       });
       if (!response.ok) {
@@ -463,7 +464,7 @@ const sortByName = (data, key, order = 'asc') => {
     const ok = window.confirm('Are you sure you want to delete this revenue entry?');
     if (!ok) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/schemes/revenue/${row.id}`, {
+      const response = await fetch(`${appConfig.apiBaseUrl}/schemes/revenue/${row.id}`, {
         method: 'DELETE'
       });
       if (!response.ok) {
@@ -574,8 +575,8 @@ const sortByName = (data, key, order = 'asc') => {
 
         const isEditing = editingItem?.type === 'state-scheme' && editingItem?.id;
         const url = isEditing
-          ? `http://localhost:5000/api/schemes/state-schemes/${editingItem.id}`
-          : 'http://localhost:5000/api/schemes/state-schemes';
+          ? `${appConfig.apiBaseUrl}/schemes/state-schemes/${editingItem.id}`
+          : `${appConfig.apiBaseUrl}/schemes/state-schemes`;
 
         const response = await fetch(url, {
           method: isEditing ? 'PUT' : 'POST',
@@ -607,8 +608,8 @@ const sortByName = (data, key, order = 'asc') => {
 
         const isEditing = editingItem?.type === 'revenue' && editingItem?.id;
         const url = isEditing
-          ? `http://localhost:5000/api/schemes/revenue/${editingItem.id}`
-          : 'http://localhost:5000/api/schemes/revenue';
+          ? `${appConfig.apiBaseUrl}/schemes/revenue/${editingItem.id}`
+          : `${appConfig.apiBaseUrl}/schemes/revenue`;
 
         const response = await fetch(url, {
           method: isEditing ? 'PUT' : 'POST',
@@ -916,7 +917,7 @@ const parseExcelDate = (value) => {
     try {
       // CRITICAL: Fetch existing schemes BEFORE import to check for updates
       console.log('Fetching existing schemes for update check...');
-      const existingResponse = await fetch(`http://localhost:5000/api/schemes/financial-progress?year=${financialYear}`);
+      const existingResponse = await fetch(`${appConfig.apiBaseUrl}/schemes/financial-progress?year=${financialYear}`);
       const existingSchemes = await existingResponse.json();
       console.log('Existing schemes loaded:', { count: existingSchemes.length, schemes: existingSchemes.map(s => ({ id: s.id, name: s.scheme_name, year: s.financial_year })) });
       
@@ -1328,7 +1329,7 @@ const handleStateSchemeImport = async (file) => {
           }
 
           const response = await fetch(
-            'http://localhost:5000/api/schemes/state-schemes',
+            `${appConfig.apiBaseUrl}/schemes/state-schemes`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1405,7 +1406,7 @@ const handleRevenueImport = async (file) => {
             };
 
             if (revenueData.cooperativeName) {
-              const response = await fetch('http://localhost:5000/api/schemes/revenue', {
+              const response = await fetch(`${appConfig.apiBaseUrl}/schemes/revenue`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(revenueData)
