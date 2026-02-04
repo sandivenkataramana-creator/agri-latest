@@ -66,6 +66,8 @@ router.get('/financial-progress', async (req, res) => {
     let year = req.query.year || '2025-26';
     const hodId = req.query.hodId ? Number(req.query.hodId) : null;
     
+    console.log('Financial-progress endpoint called with:', { year, hodId });
+    
     // Normalize year format - accept both "2025-26" and "2025-2026"
     if (year.match(/\d{4}-\d{2}$/)) {
       // Already in format 2025-26
@@ -84,12 +86,10 @@ router.get('/financial-progress', async (req, res) => {
     let whereClause = 'WHERE (financial_year = ? OR financial_year LIKE ?) AND status IN ("active", "ACTIVE")';
     const params = [year, `${year4digit}%`];
     
-    if (hodId) {
-      whereClause += ' AND hod_id = ?';
-      params.push(hodId);
-    }
+    // NOTE: The hodId filter is a placeholder - schemes table doesn't have hod_id column
+    // Only the hod (string) column exists currently
     
-    // Try primary query first (with all financial columns)
+    // Try primary query first (with all financial columns) - without hod_id which doesn't exist
     try {
       const [results] = await db.query(
         `SELECT
@@ -97,7 +97,7 @@ router.get('/financial-progress', async (req, res) => {
            scheme_name,
            COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
            hod,
-           hod_id,
+           NULL AS hod_id,
            financial_year,
            COALESCE(allocation_goi_share, 0) AS allocation_goi_share,
            COALESCE(allocation_state_share, 0) AS allocation_state_share,
@@ -126,46 +126,58 @@ router.get('/financial-progress', async (req, res) => {
       console.log('Financial-progress query result:', { year, hodId, count: results.length, firstItem: results[0] });
       return res.json(results);
     } catch (innerErr) {
-      console.warn('Primary financial-progress query failed, attempting fallback:', innerErr.message);
+      console.warn('Primary financial-progress query failed:', innerErr.message);
+      console.warn('Query error code:', innerErr.code);
       
-      const [fallbackResults] = await db.query(
-        `SELECT
-           id,
-           scheme_name,
-           COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
-           hod,
-           hod_id,
-           financial_year,
-           0 AS allocation_goi_share,
-           0 AS allocation_state_share,
-           0 AS allocation_total,
-           0 AS slsc_goi_share,
-           0 AS slsc_state_share,
-           0 AS slsc_total,
-           0 AS sanction_goi_share,
-           0 AS sanction_state_share,
-           0 AS sanction_total,
-           0 AS bro_released_amount,
-           0 AS dt_authorized_amount,
-           0 AS bills_preferred_count,
-           0 AS bills_preferred_amount,
-           NULL AS oldest_bill_date,
-           0 AS bills_cleared_count,
-           0 AS bills_cleared_amount,
-           NULL AS latest_bill_date,
-           NULL AS remark
-         FROM schemes
-         ${whereClause}
-         ORDER BY scheme_name;
-        `,
-        params
-      );
-      console.log('Fallback financial-progress query result:', { year, hodId, count: fallbackResults.length });
-      return res.json(fallbackResults);
+      // Try simpler fallback query with only basic columns
+      try {
+        const [fallbackResults] = await db.query(
+          `SELECT
+             id,
+             scheme_name,
+             COALESCE(central_scheme_name, scheme_name) AS central_scheme_name,
+             hod,
+             NULL AS hod_id,
+             financial_year,
+             0 AS allocation_goi_share,
+             0 AS allocation_state_share,
+             0 AS allocation_total,
+             0 AS slsc_goi_share,
+             0 AS slsc_state_share,
+             0 AS slsc_total,
+             0 AS sanction_goi_share,
+             0 AS sanction_state_share,
+             0 AS sanction_total,
+             0 AS bro_released_amount,
+             0 AS dt_authorized_amount,
+             0 AS bills_preferred_count,
+             0 AS bills_preferred_amount,
+             NULL AS oldest_bill_date,
+             0 AS bills_cleared_count,
+             0 AS bills_cleared_amount,
+             NULL AS latest_bill_date,
+             NULL AS remark
+           FROM schemes
+           ${whereClause}
+           ORDER BY scheme_name;
+          `,
+          params
+        );
+        console.log('Fallback financial-progress query succeeded:', { year, hodId, count: fallbackResults.length });
+        return res.json(fallbackResults);
+      } catch (fallbackErr) {
+        console.error('FALLBACK ALSO FAILED. Primary error:', innerErr.message);
+        console.error('Fallback error:', fallbackErr.message);
+        throw fallbackErr; // This will be caught by the outer catch
+      }
     }
   } catch (error) {
-    console.error('Error in financial-progress endpoint:', error);
-    res.status(500).json({ error: error.message });
+    console.error('FATAL Error in financial-progress endpoint:', error.message);
+    console.error('Full error stack:', error.stack);
+    res.status(500).json({ 
+      error: error.message,
+      details: 'Database query failed. Missing column: hod_id does not exist in schemes table.'
+    });
   }
 });
 
