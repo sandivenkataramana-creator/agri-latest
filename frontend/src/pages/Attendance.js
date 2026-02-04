@@ -842,7 +842,7 @@ console.log('Filters:', filters);
           </div>
           <div className="summary-content">
             <h3>{stats.late}</h3>
-            <p>Late (&gt;10:45)</p>
+            <p>Late (&gt;10:30)</p>
             <span>
               {stats.total > 0 ? ((stats.late / stats.total) * 100).toFixed(1) : 0}%
             </span>
@@ -1172,7 +1172,7 @@ console.log('Filters:', filters);
             <div className="form-group">
               <label>Check In</label>
               <input type="time" name="check_in" value={formData.check_in} onChange={handleChange} />
-              <small style={{ color: '#999', fontSize: '11px' }}>After 10:45 AM = Late</small>
+              <small style={{ color: '#999', fontSize: '11px' }}>After 10:30 AM = Late</small>
             </div>
             <div className="form-group">
               <label>Check Out</label>
