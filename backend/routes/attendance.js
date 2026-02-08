@@ -64,11 +64,11 @@ router.get('/summary/by-hod', async (req, res) => {
         h.id as hod_id,
         h.name as hod_name,
         h.department,
+        COUNT(*) as total_records,
         COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_count,
         COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent_count,
-        COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day_count,
-        COUNT(CASE WHEN a.status = 'leave' THEN 1 END) as leave_count,
-        COUNT(a.id) as total_records
+        COUNT(CASE WHEN LOWER(a.status) IN ('half_day','half') THEN 1 END) as half_day,
+        COUNT(CASE WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 1 END) as leave_count
       FROM hods h
       LEFT JOIN attendance a ON h.id = a.hod_id
       GROUP BY h.id, h.name, h.department
@@ -163,15 +163,16 @@ router.get('/statistics', authenticateJWT, async (req, res) => {
       params.push(employee_type);
     }
     
-    // Get summary statistics - Fixed: present excludes late arrivals, late counts check_in > 10:45
+    // Get summary statistics - use status directly from DB
     const [summary] = await db.query(`
       SELECT 
         COUNT(*) as total_records,
-        COUNT(CASE WHEN a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:45:00') THEN 1 END) as present,
-        COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
-        COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day,
-        COUNT(CASE WHEN a.status = 'leave' OR a.status = 'on_leave' THEN 1 END) as on_leave,
-        COUNT(CASE WHEN a.status = 'late' OR (a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:45:00') THEN 1 END) as late,
+        COUNT(CASE WHEN LOWER(a.status) = 'present' THEN 1 END) as present,
+        COUNT(CASE WHEN LOWER(a.status) = 'absent' THEN 1 END) as absent,
+        COUNT(CASE WHEN LOWER(a.status) IN ('half_day','half') THEN 1 END) as half_day,
+        COUNT(CASE WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 1 END) as on_leave,
+        COUNT(CASE WHEN LOWER(a.status) = 'late' THEN 1 END) as late,
+        COUNT(CASE WHEN LOWER(a.status) NOT IN ('present', 'absent', 'half_day', 'on_leave', 'leave', 'late') OR a.status IS NULL THEN 1 END) as other,
         COUNT(DISTINCT a.staff_id) as unique_staff,
         COUNT(DISTINCT a.date) as working_days
       FROM attendance a
@@ -180,16 +181,16 @@ router.get('/statistics', authenticateJWT, async (req, res) => {
       ${dateFilter}
     `, params);
     
-    // Get monthly trend data - Fixed: present excludes late arrivals
+    // Get monthly trend data - use status directly from DB
     const [monthlyTrend] = await db.query(`
       SELECT 
         DATE_FORMAT(a.date, '%Y-%m') as month,
         DATE_FORMAT(a.date, '%b %Y') as month_label,
-        COUNT(CASE WHEN a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:45:00') THEN 1 END) as present,
-        COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
-        COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day,
-        COUNT(CASE WHEN a.status = 'leave' OR a.status = 'on_leave' THEN 1 END) as on_leave,
-        COUNT(CASE WHEN a.status = 'late' OR (a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:45:00') THEN 1 END) as late
+        COUNT(CASE WHEN LOWER(a.status) = 'present' THEN 1 END) as present,
+        COUNT(CASE WHEN LOWER(a.status) = 'absent' THEN 1 END) as absent,
+        COUNT(CASE WHEN LOWER(a.status) IN ('half_day','half') THEN 1 END) as half_day,
+        COUNT(CASE WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 1 END) as on_leave,
+        COUNT(CASE WHEN LOWER(a.status) = 'late' THEN 1 END) as late
       FROM attendance a
       LEFT JOIN staff s ON a.staff_id = s.id
       LEFT JOIN hods h ON a.hod_id = h.id
@@ -230,16 +231,16 @@ router.get('/statistics', authenticateJWT, async (req, res) => {
       dailyParams.push(employee_type);
     }
 
-    // Get daily trend for last 30 days - Fixed: present excludes late arrivals
+    // Get daily trend for last 30 days - use status directly from DB
     const [dailyTrend] = await db.query(`
       SELECT 
         DATE_FORMAT(a.date, '%Y-%m-%d') as day,
         DATE_FORMAT(a.date, '%d %b') as day_label,
-        COUNT(CASE WHEN a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:45:00') THEN 1 END) as present,
-        COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
-        COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day,
-        COUNT(CASE WHEN a.status = 'leave' OR a.status = 'on_leave' THEN 1 END) as on_leave,
-        COUNT(CASE WHEN a.status = 'late' OR (a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:45:00') THEN 1 END) as late
+        COUNT(CASE WHEN LOWER(a.status) = 'present' THEN 1 END) as present,
+        COUNT(CASE WHEN LOWER(a.status) = 'absent' THEN 1 END) as absent,
+       COUNT(CASE WHEN LOWER(a.status) IN ('half_day','half') THEN 1 END) as half_day,
+        COUNT(CASE WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 1 END) as on_leave,
+        COUNT(CASE WHEN LOWER(a.status) = 'late' THEN 1 END) as late
       FROM attendance a
       LEFT JOIN staff s ON a.staff_id = s.id
       LEFT JOIN hods h ON a.hod_id = h.id
@@ -284,16 +285,16 @@ router.get('/statistics', authenticateJWT, async (req, res) => {
     }
 
 
-    // Get department-wise summary - Fixed: present excludes late arrivals
+    // Get department-wise summary - use status directly from DB
     const [departmentWise] = await db.query(`
       SELECT 
         h.department,
         h.name as hod_name,
-        COUNT(CASE WHEN a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:45:00') THEN 1 END) as present,
-        COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
-        COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day,
-        COUNT(CASE WHEN a.status = 'leave' OR a.status = 'on_leave' THEN 1 END) as on_leave,
-        COUNT(CASE WHEN a.status = 'late' OR (a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:45:00') THEN 1 END) as late,
+        COUNT(CASE WHEN LOWER(a.status) = 'present' THEN 1 END) as present,
+        COUNT(CASE WHEN LOWER(a.status) = 'absent' THEN 1 END) as absent,
+        COUNT(CASE WHEN LOWER(a.status) IN ('half_day','half') THEN 1 END) as half_day,
+        COUNT(CASE WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 1 END) as on_leave,
+        COUNT(CASE WHEN LOWER(a.status) = 'late' THEN 1 END) as late,
         COUNT(*) as total
       FROM attendance a
       LEFT JOIN hods h ON a.hod_id = h.id
@@ -302,6 +303,8 @@ router.get('/statistics', authenticateJWT, async (req, res) => {
       GROUP BY h.id, h.department, h.name
     `, deptParams);
     
+    console.log('[Attendance Statistics] Query - dateFilter:', dateFilter);
+    console.log('[Attendance Statistics] Query - params:', params);
     console.log('[Attendance Statistics] Summary:', summary[0]);
     console.log('[Attendance Statistics] Daily trend records:', dailyTrend?.length || 0);
     console.log('[Attendance Statistics] Monthly trend records:', monthlyTrend?.length || 0);
@@ -379,10 +382,11 @@ router.get('/department-wise', authenticateJWT, async (req, res) => {
         h.name as hod_name,
         h.department,
         COUNT(DISTINCT s.id) as total_emp,
-        COUNT(CASE WHEN a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:30:00') THEN 1 END) as present,
-        COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
-        COUNT(CASE WHEN a.status = 'late' OR (a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:30:00') THEN 1 END) as late,
-        COUNT(CASE WHEN a.status = 'leave' OR a.status = 'on_leave' THEN 1 END) as emp_leave
+        COUNT(CASE WHEN LOWER(a.status) = 'present' THEN 1 END) as present,
+        COUNT(CASE WHEN LOWER(a.status) = 'absent' THEN 1 END) as absent,
+        COUNT(CASE WHEN LOWER(a.status) = 'late' THEN 1 END) as late,
+        COUNT(CASE WHEN LOWER(a.status) IN ('half_day','half') THEN 1 END) as half_day,
+        COUNT(CASE WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 1 END) as emp_leave
       FROM hods h
       LEFT JOIN staff s ON s.hod_id = h.id
       LEFT JOIN attendance a ON a.staff_id = s.id${attendanceJoinFilter}
@@ -430,7 +434,9 @@ router.get('/department-wise', authenticateJWT, async (req, res) => {
         s.name as staff_name,
         s.employee_id,
         s.designation,
+        s.role,
         s.phone,
+        s.email,
         s.employee_type,
         a.status,
         a.check_in,
@@ -438,12 +444,9 @@ router.get('/department-wise', authenticateJWT, async (req, res) => {
         a.date,
         a.remarks,
         CASE 
-          WHEN a.status = 'late' THEN 'late'
-          WHEN a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:30:00' THEN 'late'
-          WHEN a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:30:00') THEN 'present'
-          WHEN a.status = 'absent' THEN 'absent'
-          WHEN a.status = 'leave' OR a.status = 'on_leave' THEN 'leave'
-          ELSE a.status
+          WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 'leave'
+          WHEN LOWER(a.status) IN ('half_day', 'half') THEN 'half_day'
+          ELSE LOWER(a.status)
         END as display_status
       FROM hods h
       LEFT JOIN staff s ON s.hod_id = h.id
@@ -463,6 +466,7 @@ router.get('/department-wise', authenticateJWT, async (req, res) => {
           total: deptEmployees,
           present: deptEmployees.filter(e => e.display_status === 'present'),
           absent: deptEmployees.filter(e => e.display_status === 'absent'),
+          half_day: deptEmployees.filter(e => e.display_status === 'half_day'),
           late: deptEmployees.filter(e => e.display_status === 'late'),
           leave: deptEmployees.filter(e => e.display_status === 'leave')
         }
@@ -483,6 +487,8 @@ router.get('/department-wise', authenticateJWT, async (req, res) => {
 // Get filtered attendance records
 router.get('/filtered', authenticateJWT, async (req, res) => {
   try {
+    console.log("/////////////////////////////////////")
+
         const { role, hod_id: userHodId } = req.user;
 
     // 🔐 FORCE HOD SCOPE
@@ -529,46 +535,61 @@ router.get('/filtered', authenticateJWT, async (req, res) => {
     }
     
     if (status && status !== 'all') {
-      if (status === 'late') {
-        whereClause += " AND (a.status = 'late' OR (a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:45:00'))";
-      } else if (status === 'leave') {
-        whereClause += " AND (a.status = 'leave' OR a.status = 'on_leave')";
-      } else if (status === 'present') {
-        // Present excludes late arrivals
-        whereClause += " AND a.status = 'present' AND (a.check_in IS NULL OR TIME(a.check_in) <= '10:45:00')";
+      if (status === 'leave') {
+        whereClause += " AND LOWER(a.status) IN ('on_leave', 'leave')";
+      } else if (status === 'half' || status === 'half_day') {
+        whereClause += " AND LOWER(a.status) IN ('half_day', 'half')";
       } else {
-        whereClause += ' AND a.status = ?';
-        params.push(status);
+        whereClause += ' AND LOWER(a.status) = ?';
+        params.push(status.toLowerCase());
       }
     }
     
     const [results] = await db.query(`
       SELECT 
-        a.*,
+        a.id,
+        a.staff_id,
+        a.hod_id,
+        a.department_id,
+        a.date,
+        a.status,
+        a.check_in,
+        a.check_out,
+        a.working_hours,
+        a.device_id,
+        a.device_ip,
+        a.record_timestamp,
+        a.source,
+        a.created_at,
+        a.updated_at,
         s.name as staff_name, 
         s.employee_id,
         s.designation,
+        s.role,
         s.phone,
+        s.email,
         s.employee_type,
         h.name as hod_name, 
         h.department,
         CASE 
-          WHEN a.status = 'late' THEN 'late'
-          WHEN a.status = 'present' AND a.check_in IS NOT NULL AND TIME(a.check_in) > '10:45:00' THEN 'late'
-          ELSE a.status
+          WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 'leave'
+          WHEN LOWER(a.status) IN ('half_day', 'half') THEN 'half_day'
+          ELSE LOWER(a.status)
         END as display_status,
-        CASE 
-          WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL 
-          THEN TIMEDIFF(a.check_out, a.check_in)
-          ELSE NULL
-        END as working_hours
+        COALESCE(a.working_hours, 
+          CASE 
+            WHEN a.check_in IS NOT NULL AND a.check_out IS NOT NULL 
+            THEN TIMEDIFF(a.check_out, a.check_in)
+            ELSE NULL
+          END
+        ) as calculated_working_hours
       FROM attendance a 
       LEFT JOIN staff s ON a.staff_id = s.id 
       LEFT JOIN hods h ON a.hod_id = h.id 
       WHERE ${whereClause}
       ORDER BY a.date DESC, a.check_in DESC
+      LIMIT 1000
     `, params);
-    
     console.log('[Attendance Filtered] Total records found:', results?.length || 0);
     console.log('[Attendance Filtered] Sample record:', results?.[0]);
     
@@ -576,6 +597,156 @@ router.get('/filtered', authenticateJWT, async (req, res) => {
   } catch (error) {
     console.error('[Attendance Filtered] ERROR:', error);
     console.error('[Attendance Filtered] Error details:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get staff who don't have attendance for a specific date (potential absentees)
+router.get('/absent-staff/:date', authenticateJWT, async (req, res) => {
+  try {
+    const { date } = req.params;
+    const { role, hod_id: userHodId } = req.user;
+    const { hod_id, department, employee_type } = req.query;
+    
+    console.log('[Absent Staff] Checking for date:', date);
+    
+    let whereClause = '1=1';
+    let params = [date];
+    
+    // HOD restriction
+    if (role === 'hod') {
+      whereClause += ' AND s.hod_id = ?';
+      params.push(userHodId);
+    } else if (hod_id) {
+      whereClause += ' AND s.hod_id = ?';
+      params.push(hod_id);
+    }
+    
+    if (department) {
+      whereClause += ' AND h.department = ?';
+      params.push(department);
+    }
+    
+    if (employee_type && employee_type !== 'all') {
+      whereClause += ' AND s.employee_type = ?';
+      params.push(employee_type);
+    }
+    
+    // Get all active staff who DON'T have attendance record for the given date
+    const [absentStaff] = await db.query(`
+      SELECT 
+        s.id as staff_id,
+        s.employee_id,
+        s.name as staff_name,
+        s.designation,
+        s.employee_type,
+        s.hod_id,
+        h.name as hod_name,
+        h.department
+      FROM staff s
+      LEFT JOIN hods h ON s.hod_id = h.id
+      WHERE s.id NOT IN (
+        SELECT staff_id FROM attendance WHERE DATE(date) = ?
+      )
+      AND ${whereClause}
+      ORDER BY h.department, s.name
+    `, params);
+    
+    console.log('[Absent Staff] Found', absentStaff.length, 'staff without attendance');
+    
+    res.json({
+      date,
+      total_absent: absentStaff.length,
+      staff: absentStaff
+    });
+  } catch (error) {
+    console.error('[Absent Staff] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Auto-mark absent staff for a specific date
+// This inserts "absent" records for all staff who don't have attendance
+// When they check in via external system, the record will be updated via upsert
+router.post('/mark-absent', ...superAdminOnly, async (req, res) => {
+  try {
+    const { date, hod_id, department, employee_type } = req.body;
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    
+    console.log('[Mark Absent] Processing for date:', targetDate);
+    
+    let whereClause = '1=1';
+    let params = [targetDate];
+    
+    if (hod_id) {
+      whereClause += ' AND s.hod_id = ?';
+      params.push(hod_id);
+    }
+    
+    if (department) {
+      whereClause += ' AND h.department = ?';
+      params.push(department);
+    }
+    
+    if (employee_type && employee_type !== 'all') {
+      whereClause += ' AND s.employee_type = ?';
+      params.push(employee_type);
+    }
+    
+    // Get staff who don't have attendance for the date
+    const [absentStaff] = await db.query(`
+      SELECT 
+        s.id as staff_id,
+        s.hod_id,
+        h.id as department_id
+      FROM staff s
+      LEFT JOIN hods h ON s.hod_id = h.id
+      WHERE s.id NOT IN (
+        SELECT staff_id FROM attendance WHERE DATE(date) = ?
+      )
+      AND ${whereClause}
+    `, params);
+    
+    console.log('[Mark Absent] Found', absentStaff.length, 'staff to mark absent');
+    
+    if (absentStaff.length === 0) {
+      return res.json({
+        message: 'No staff to mark absent',
+        date: targetDate,
+        marked_absent: 0
+      });
+    }
+    
+    // Insert absent records using upsert (so if they check in later, it updates)
+    let markedCount = 0;
+    for (const staff of absentStaff) {
+      try {
+        await db.query(`
+          INSERT INTO attendance (staff_id, hod_id, department_id, date, status, source, created_at)
+          VALUES (?, ?, ?, ?, 'absent', 'auto_absent', NOW())
+          ON DUPLICATE KEY UPDATE
+            status = CASE 
+              WHEN status = 'absent' OR status IS NULL THEN 'absent'
+              ELSE status
+            END,
+            updated_at = NOW()
+        `, [staff.staff_id, staff.hod_id, staff.department_id, targetDate]);
+        markedCount++;
+      } catch (insertErr) {
+        console.error('[Mark Absent] Error marking staff', staff.staff_id, ':', insertErr.message);
+      }
+    }
+    
+    console.log('[Mark Absent] Successfully marked', markedCount, 'as absent');
+    
+    res.json({
+      message: `Marked ${markedCount} staff as absent`,
+      date: targetDate,
+      marked_absent: markedCount,
+      total_found: absentStaff.length
+    });
+  } catch (error) {
+    console.error('[Mark Absent] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });

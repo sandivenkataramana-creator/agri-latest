@@ -1,6 +1,17 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const path = require('path');
+
+// Load environment-specific .env file
+// Development: loads .env
+// Production: loads .env.production (when NODE_ENV=production)
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env';
+require('dotenv').config({ path: path.join(__dirname, envFile) });
+
+console.log(`[Server] ==========================================`);
+console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`[Server] Config loaded from: ${envFile}`);
+console.log(`[Server] ==========================================`);
 
 const app = express();
 
@@ -77,10 +88,95 @@ try {
   console.warn('Import queue not started (Redis might be unavailable):', err.message);
 }
 
+// =====================================================
+// AUTO-MARK ABSENT FEATURE
+// Marks all staff as absent at day start
+// When they check in via external system, status updates
+// =====================================================
+const markAllStaffAbsent = async () => {
+  try {
+    const db = require('./config/database');
+    
+    // Get current date from database (ensures consistency with DB timezone)
+    const [[{ today }]] = await db.query(`SELECT CURDATE() as today`);
+    
+    console.log(`[Auto-Absent] Starting auto-absent marking for ${today} (using DB time)...`);
+    
+    // Get all active staff who DON'T already have attendance for today
+    const [staffWithoutAttendance] = await db.query(`
+      SELECT 
+        s.id as staff_id,
+        s.hod_id,
+        h.id as department_id
+      FROM staff s
+      LEFT JOIN hods h ON s.hod_id = h.id
+      WHERE s.id NOT IN (
+        SELECT staff_id FROM attendance WHERE DATE(date) = CURDATE()
+      )
+    `);
+    
+    console.log(`[Auto-Absent] Found ${staffWithoutAttendance.length} staff without attendance records`);
+    
+    if (staffWithoutAttendance.length === 0) {
+      console.log(`[Auto-Absent] All staff already have attendance records for today`);
+      return;
+    }
+    
+    // Insert absent records for all staff
+    // Skip department_id to avoid foreign key issues (it's nullable)
+    let markedCount = 0;
+    for (const staff of staffWithoutAttendance) {
+      try {
+        await db.query(`
+          INSERT INTO attendance (staff_id, hod_id, date, status, source, created_at)
+          VALUES (?, ?, CURDATE(), 'absent', 'auto_absent', NOW())
+          ON DUPLICATE KEY UPDATE id = id
+        `, [staff.staff_id, staff.hod_id]);
+        markedCount++;
+      } catch (insertErr) {
+        // Ignore duplicate key errors
+        if (insertErr.code !== 'ER_DUP_ENTRY') {
+          console.error(`[Auto-Absent] Error for staff ${staff.staff_id}:`, insertErr.message);
+        }
+      }
+    }
+    
+    console.log(`[Auto-Absent] Successfully marked ${markedCount} staff as absent for ${today}`);
+  } catch (err) {
+    console.error('[Auto-Absent] Error:', err.message);
+  }
+};
+
+// Schedule auto-absent to run at midnight
+const scheduleAutoAbsent = () => {
+  const now = new Date();
+  const night = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1, // next day
+    0, 0, 0 // midnight
+  );
+  const msToMidnight = night.getTime() - now.getTime();
+  
+  console.log(`[Auto-Absent] Scheduled next run in ${Math.round(msToMidnight / 1000 / 60)} minutes (at midnight)`);
+  
+  setTimeout(() => {
+    markAllStaffAbsent();
+    // Schedule for next day
+    setInterval(markAllStaffAbsent, 24 * 60 * 60 * 1000); // Run every 24 hours
+  }, msToMidnight);
+};
+
 // If this file is run directly, start the HTTP server. This allows tests to import the app without listening.
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
+    
+    // Run auto-absent marking on server startup (marks absent for today)
+    setTimeout(() => {
+      markAllStaffAbsent();
+      scheduleAutoAbsent(); // Schedule for future days
+    }, 5000); // Wait 5 seconds for DB connection to be ready
   });
 }
 

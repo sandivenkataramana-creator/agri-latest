@@ -74,6 +74,9 @@ function App() {
             <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
               <TopHeader user={user} onLogout={handleLogout} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
               <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+              
+                {/* <div className="app-container no-sidebar">
+                <TopHeader user={user} onLogout={handleLogout} /> */}
               <main className="main-content">
                 <Routes>
                   <Route 
