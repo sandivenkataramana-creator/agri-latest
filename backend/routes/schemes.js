@@ -29,6 +29,8 @@ router.get('/financial-progress', async (req, res) => {
     let year = req.query.year || '2025-26';
     const hodId = req.query.hodId ? Number(req.query.hodId) : null;
     
+    console.log('Financial-progress endpoint called with:', { year, hodId });
+    
     // Normalize year format - accept both "2025-26" and "2025-2026"
     if (year.match(/\d{4}-\d{2}$/)) {
       // Already in format 2025-26
@@ -47,12 +49,10 @@ router.get('/financial-progress', async (req, res) => {
     let whereClause = 'WHERE (financial_year = ? OR financial_year LIKE ?) AND status IN ("active", "ACTIVE")';
     const params = [year, `${year4digit}%`];
     
-    if (hodId) {
-      whereClause += ' AND hod_id = ?';
-      params.push(hodId);
-    }
+    // NOTE: The hodId filter is a placeholder - schemes table doesn't have hod_id column
+    // Only the hod (string) column exists currently
     
-    // Try primary query first (with all financial columns)
+    // Try primary query first (with all financial columns) - without hod_id which doesn't exist
     try {
       const [results] = await db.query(
         `SELECT
@@ -89,7 +89,8 @@ router.get('/financial-progress', async (req, res) => {
       console.log('Financial-progress query result:', { year, hodId, count: results.length, firstItem: results[0] });
       return res.json(results);
     } catch (innerErr) {
-      console.warn('Primary financial-progress query failed, attempting fallback:', innerErr.message);
+      console.warn('Primary financial-progress query failed:', innerErr.message);
+      console.warn('Query error code:', innerErr.code);
       
       const [fallbackResults] = await db.query(
         `SELECT
@@ -127,8 +128,12 @@ router.get('/financial-progress', async (req, res) => {
       return res.json(fallbackResults);
     }
   } catch (error) {
-    console.error('Error in financial-progress endpoint:', error);
-    res.status(500).json({ error: error.message });
+    console.error('FATAL Error in financial-progress endpoint:', error.message);
+    console.error('Full error stack:', error.stack);
+    res.status(500).json({ 
+      error: error.message,
+      details: 'Database query failed. Missing column: hod_id does not exist in schemes table.'
+    });
   }
 });
 

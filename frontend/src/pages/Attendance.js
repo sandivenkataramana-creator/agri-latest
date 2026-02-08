@@ -70,6 +70,7 @@ const Attendance = () => {
   
   // UI states
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   // eslint-disable-next-line no-unused-vars
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -218,14 +219,14 @@ console.log('Filters:', filters);
         present: statistics.summary.present || 0,
         absent: statistics.summary.absent || 0,
         late: statistics.summary.late || 0,
-        halfDay: statistics.summary.half_day || 0,
+        half: statistics.summary.half_day || 0,
         leave: statistics.summary.on_leave || 0,
         total: statistics.summary.total_records || 0,
         uniqueStaff: statistics.summary.unique_staff || 0,
         workingDays: statistics.summary.working_days || 0
       };
     }
-    return { present: 0, absent: 0, late: 0, halfDay: 0, leave: 0, total: 0, uniqueStaff: 0, workingDays: 0 };
+    return { present: 0, absent: 0, late: 0, half: 0, leave: 0, total: 0, uniqueStaff: 0, workingDays: 0 };
   }, [statistics]);
 
   // Bar chart data based on view and status filter
@@ -242,7 +243,7 @@ console.log('Filters:', filters);
       'present': { label: 'Present', color: '#4CAF50', field: 'present' },
       'absent': { label: 'Absent', color: '#F44336', field: 'absent' },
       'late': { label: 'Late', color: '#FF9800', field: 'late' },
-      'half_day': { label: 'Half Day', color: '#9C27B0', field: 'half_day' },
+      'half': { label: 'Half', color: '#9C27B0', field: 'half_day' },
       'leave': { label: 'Leave', color: '#2196F3', field: 'on_leave' }
     };
 
@@ -283,7 +284,7 @@ console.log('Filters:', filters);
           borderRadius: 4,
         },
         {
-          label: 'Half Day',
+          label: 'Half',
           data: data.map(item => item.half_day),
           backgroundColor: '#9C27B0',
           borderRadius: 4,
@@ -300,13 +301,13 @@ console.log('Filters:', filters);
 
   // Pie chart data
   const pieChartData = useMemo(() => {
-    const total = stats.present + stats.absent + stats.late + stats.halfDay + stats.leave;
+    const total = stats.present + stats.absent + stats.late + stats.half + stats.leave;
     if (total === 0) return null;
 
     return {
-      labels: ['Present', 'Absent', 'Late', 'Half Day', 'Leave'],
+      labels: ['Present', 'Absent', 'Late', 'Half', 'Leave'],
       datasets: [{
-        data: [stats.present, stats.absent, stats.late, stats.halfDay, stats.leave],
+        data: [stats.present, stats.absent, stats.late, stats.half, stats.leave],
         backgroundColor: ['#4CAF50', '#F44336', '#FF9800', '#9C27B0', '#2196F3'],
         borderWidth: 2,
         borderColor: '#ffffff'
@@ -421,11 +422,16 @@ console.log('Filters:', filters);
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value };
     
-    // If custom period, don't set period
-   if (key === 'start_date' || key === 'end_date') {
-  delete newFilters.period; // backend will use start_date + end_date
-}
-
+    // If period is changed to a preset (not custom), clear custom date fields
+    if (key === 'period' && value !== 'custom') {
+      delete newFilters.start_date;
+      delete newFilters.end_date;
+    }
+    
+    // If custom dates are set, remove period
+    if (key === 'start_date' || key === 'end_date') {
+      newFilters.period = 'custom'; // Set period to custom
+    }
     
     setFilters(newFilters);
     
@@ -443,25 +449,23 @@ console.log('Filters:', filters);
   };
 
   // Handle status card click to open popup
-  const isLate = (r) => r.check_in && r.check_in > '10:30:00';
-
   const handleStatusPopupOpen = (status, title) => {
     const statusMap = {
-  present: r =>
-    (r.display_status || r.status) === 'present' && !isLate(r),
+      present: r =>
+        (r.display_status || r.status) === 'present',
 
-  absent: r =>
-    (r.display_status || r.status) === 'absent',
+      absent: r =>
+        (r.display_status || r.status) === 'absent',
 
-  late: r =>
-    isLate(r),
+      late: r =>
+        (r.display_status || r.status) === 'late',
 
-  half_day: r =>
-    (r.display_status || r.status) === 'half_day',
+      half: r =>
+        (r.display_status || r.status) === 'half_day',
 
-  leave: r =>
-    ['leave', 'on_leave'].includes(r.display_status || r.status)
-};
+      leave: r =>
+        ['leave', 'on_leave'].includes(r.display_status || r.status)
+    };
 
     
     const filteredData = attendance.filter(statusMap[status] || (() => false));
@@ -486,13 +490,17 @@ console.log('Filters:', filters);
 
   const handleExportPopupData = () => {
     try {
-      const headers = ['Employee ID', 'Name', 'Department', 'HOD', 'Date', 'Check In', 'Check Out', 'Status', 'Remarks'];
+      const headers = ['Employee ID', 'Name', 'Phone', 'Email', 'Department', 'Employee Type', 'Designation', 'HOD', 'Date', 'Check In', 'Check Out', 'Status', 'Remarks'];
       const csvContent = [
         headers.join(','),
         ...statusPopup.data.map(record => [
           record.employee_id || '',
           record.staff_name || '',
+          record.phone || '',
+          record.email || '',
           record.department || '',
+          record.employee_type || '',
+          record.role || '',
           record.hod_name || '',
           record.date || '',
           record.check_in || '',
@@ -514,41 +522,28 @@ console.log('Filters:', filters);
   };
 
   const handleRefresh = async () => {
-    setLoading(true);
+    setRefreshing(true);
     try {
-      const params = { ...filters };
-      Object.keys(params).forEach(key => {
-        if (!params[key] || params[key] === 'all') delete params[key];
-      });
-
-      const [attendanceRes, statsRes, deptRes] = await Promise.all([
-        getAttendanceFiltered(params),
-        getAttendanceStatistics(params),
-        getDepartmentWiseAttendance(params)
-      ]);
-
-      setAttendance(attendanceRes.data || []);
-      setStatistics(statsRes.data || null);
-      setDepartmentData(deptRes.data || []);
-      setError(null);
-    } catch (err) {
-      console.error('Error refreshing data:', err);
-      setError('Failed to refresh data');
+      await fetchAttendanceData();
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   };
 
   const handleExport = () => {
     try {
       // Create CSV content
-      const headers = ['Employee ID', 'Name', 'Department', 'HOD', 'Date', 'Check In', 'Check Out', 'Working Hours', 'Status', 'Remarks'];
+      const headers = ['Employee ID', 'Name', 'Phone', 'Email', 'Department', 'Employee Type', 'Designation', 'HOD', 'Date', 'Check In', 'Check Out', 'Working Hours', 'Status', 'Remarks'];
       const csvContent = [
         headers.join(','),
         ...attendance.map(record => [
           record.employee_id || '',
           record.staff_name || '',
+          record.phone || '',
+          record.email || '',
           record.department || '',
+          record.employee_type || '',
+          record.role || '',
           record.hod_name || '',
           record.date || '',
           record.check_in || '',
@@ -571,6 +566,7 @@ console.log('Filters:', filters);
     }
   };
 
+  /* Manual attendance functions disabled - data managed by external system
   const handleOpenModal = (record = null) => {
     if (isReadOnly) return;
     if (record) {
@@ -656,6 +652,7 @@ console.log('Filters:', filters);
       }
     }
   };
+  */
 
   const getStatusColor = (status) => {
     const colors = {
@@ -688,6 +685,41 @@ console.log('Filters:', filters);
       custom: 'Custom Range'
     };
     return labels[filters.period] || 'All Time';
+  };
+
+  // Get attendance date display based on period filter
+  const getAttendanceDateDisplay = () => {
+    const formatDate = (date) => {
+      return new Date(date).toLocaleDateString('en-IN', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    };
+
+    if (filters.period === 'today') {
+      return formatDate(new Date());
+    } else if (filters.period === 'custom' && filters.start_date && filters.end_date) {
+      const startFormatted = new Date(filters.start_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const endFormatted = new Date(filters.end_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      return `${startFormatted} - ${endFormatted}`;
+    } else if (filters.period === 'week') {
+      const today = new Date();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - 7);
+      return `${weekStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} - ${today.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    } else if (filters.period === 'month') {
+      return new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    } else if (filters.period === 'quarter') {
+      const today = new Date();
+      const quarterStart = new Date(today);
+      quarterStart.setMonth(today.getMonth() - 3);
+      return `${quarterStart.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} - ${today.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`;
+    } else if (filters.period === 'year') {
+      return new Date().getFullYear().toString();
+    }
+    return '';
   };
 
   if (loading && !attendance.length) {
@@ -780,6 +812,7 @@ console.log('Filters:', filters);
             <option value="all">All Types</option>
             <option value="regular">Regular</option>
             <option value="outsource">OD</option>
+            <option value="contract">Contract</option>
           </select>
         </div>
 
@@ -787,8 +820,21 @@ console.log('Filters:', filters);
           <button 
             className="btn-refresh-modern" 
             onClick={handleRefresh}
+            disabled={refreshing}
+            style={{
+              background: refreshing ? '#ccc' : 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+              color: '#fff',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontWeight: '600',
+              boxShadow: '0 2px 4px rgba(40,167,69,0.3)',
+              cursor: refreshing ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s ease'
+            }}
           >
-            <FiRefreshCw size={14} /> Refresh
+            <FiRefreshCw size={14} className={refreshing ? 'spin-animation' : ''} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} /> 
+            {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
           <button 
             className="btn-export-modern" 
@@ -799,11 +845,40 @@ console.log('Filters:', filters);
         </div>
       </div>
 
+      {/* Attendance Date Header */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '12px',
+        padding: '10px 16px',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        borderRadius: '8px',
+        color: '#fff'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <FiCalendar size={20} />
+          <div>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Attendance Summary</h3>
+            <p style={{ margin: 0, fontSize: '13px', opacity: 0.9 }}>{getAttendanceDateDisplay()}</p>
+          </div>
+        </div>
+        <div style={{ 
+          background: 'rgba(255,255,255,0.2)', 
+          padding: '6px 12px', 
+          borderRadius: '20px',
+          fontSize: '12px',
+          fontWeight: '500'
+        }}>
+          {getPeriodLabel()}
+        </div>
+      </div>
+
       {/* Summary Cards - Compact Design */}
       <div className="summary-cards-compact">
         <div 
           onClick={() => handleStatusPopupOpen('present', 'Present')} 
-          className="summary-card-compact"
+          className="summary-card-compact present"
         >
           <div className="summary-icon-compact present">
             <FiCheckCircle size={18} />
@@ -819,7 +894,7 @@ console.log('Filters:', filters);
 
         <div 
           onClick={() => handleStatusPopupOpen('absent', 'Absent')} 
-          className="summary-card-compact"
+          className="summary-card-compact absent"
         >
           <div className="summary-icon-compact absent">
             <FiXCircle size={18} />
@@ -835,14 +910,14 @@ console.log('Filters:', filters);
 
         <div 
           onClick={() => handleStatusPopupOpen('late', 'Late')} 
-          className="summary-card-compact"
+          className="summary-card-compact late"
         >
           <div className="summary-icon-compact late">
             <FiClock size={18} />
           </div>
           <div className="summary-content">
             <h3>{stats.late}</h3>
-            <p>Late (&gt;10:45)</p>
+            <p>Late</p>
             <span>
               {stats.total > 0 ? ((stats.late / stats.total) * 100).toFixed(1) : 0}%
             </span>
@@ -850,8 +925,24 @@ console.log('Filters:', filters);
         </div>
 
         <div 
+          onClick={() => handleStatusPopupOpen('half', 'Half Day')} 
+          className="summary-card-compact half"
+        >
+          <div className="summary-icon-compact half">
+            <FiClock size={18} />
+          </div>
+          <div className="summary-content">
+            <h3>{stats.half}</h3>
+            <p>Half Day</p>
+            <span>
+              {stats.total > 0 ? ((stats.half / stats.total) * 100).toFixed(1) : 0}%
+            </span>
+          </div>
+        </div>
+
+        <div 
           onClick={() => handleStatusPopupOpen('leave', 'On Leave')} 
-          className="summary-card-compact"
+          className="summary-card-compact leave"
         >
           <div className="summary-icon-compact leave">
             <FiCalendar size={18} />
@@ -865,7 +956,7 @@ console.log('Filters:', filters);
           </div>
         </div>
 
-        <div className="summary-card-compact">
+        <div className="summary-card-compact total">
           <div className="summary-icon-compact total">
             <FiUsers size={18} />
           </div>
@@ -873,7 +964,7 @@ console.log('Filters:', filters);
             <h3>{stats.total}</h3>
             <p>Total Records</p>
             <span>
-              {stats.uniqueStaff} Staff ΓÇó {stats.workingDays} Days
+              {stats.uniqueStaff} Staff & {stats.workingDays} Days
             </span>
           </div>
         </div>
@@ -882,29 +973,29 @@ console.log('Filters:', filters);
       {/* Department-Wise Attendance Grid */}
   
       {/* Charts Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '24px' }}>
         {/* Bar Chart */}
         <div className="chart-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <FiCalendar /> Attendance Trend - {getPeriodLabel()}
             </h3>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
+            {/* <div style={{ display: 'flex', gap: '8px' }}> */}
+              {/* <button 
                 className={`btn btn-sm ${chartView === 'daily' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setChartView('daily')}
-                style={{ padding: '6px 12px', fontSize: '12px' }}
+                style={{ padding: '7px 14px', fontSize: '12px', borderRadius: '4px' }}
               >
                 Daily
               </button>
               <button 
                 className={`btn btn-sm ${chartView === 'monthly' ? 'btn-primary' : 'btn-secondary'}`}
                 onClick={() => setChartView('monthly')}
-                style={{ padding: '6px 12px', fontSize: '12px' }}
+                style={{ padding: '7px 14px', fontSize: '12px', borderRadius: '4px' }}
               >
                 Monthly
-              </button>
-            </div>
+              </button> */}
+            {/* </div> */}
           </div>
           <div style={{ height: '300px' }}>
             {barChartData ? (
@@ -1014,11 +1105,13 @@ console.log('Filters:', filters);
                 <FiFilter /> Clear Filter
               </button>
             )}
+            {/* Manual attendance marking disabled - data comes from external system
             {!isReadOnly && (
               <button className="btn btn-primary" onClick={() => handleOpenModal()}>
                 <FiPlus /> Mark Attendance
               </button>
             )}
+            */}
           </div>
         </div>
         <div className="table-wrapper">
@@ -1027,21 +1120,23 @@ console.log('Filters:', filters);
               <tr>
                 <th>Employee ID</th>
                 <th>Name</th>
-                <th>Designation</th>
                 <th>Department</th>
+                <th>Employee Type</th>
+                <th>Designation</th>
                 <th>Date</th>
                 <th>Check In</th>
                 <th>Check Out</th>
                 <th>Working Hours</th>
                 <th>Status</th>
-                <th>Remarks</th>
+                {/* Actions column disabled - data managed by external system
                 <th>Actions</th>
+                */}
               </tr>
             </thead>
             <tbody>
-              {attendance.length === 0 ? (
+              {!Array.isArray(attendance) || attendance.length === 0 ? (
                 <tr>
-                  <td colSpan="11" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                  <td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
                     No attendance records found for the selected filters
                   </td>
                 </tr>
@@ -1050,8 +1145,23 @@ console.log('Filters:', filters);
                   <tr key={record.id}>
                     <td><strong>{record.employee_id || '-'}</strong></td>
                     <td>{record.staff_name || '-'}</td>
-                    <td>{record.designation || '-'}</td>
                     <td>{record.department || '-'}</td>
+                    <td>
+                      <span style={{ 
+                        padding: '2px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '11px',
+                        backgroundColor: record.employee_type === 'regular' ? '#e3f2fd' : 
+                                        record.employee_type === 'contract' ? '#fff3e0' : 
+                                        record.employee_type === 'outsource' ? '#f3e5f5' : '#f5f5f5',
+                        color: record.employee_type === 'regular' ? '#1565c0' : 
+                               record.employee_type === 'contract' ? '#ef6c00' : 
+                               record.employee_type === 'outsource' ? '#7b1fa2' : '#666'
+                      }}>
+                        {record.employee_type || '-'}
+                      </span>
+                    </td>
+                    <td>{record.role || '-'}</td>
                     <td>{record.date ? new Date(record.date).toLocaleDateString('en-IN') : '-'}</td>
                     <td>
                       <span style={{ 
@@ -1067,9 +1177,7 @@ console.log('Filters:', filters);
                         {((record.display_status || record.status) || 'N/A').replace('_', ' ')}
                       </span>
                     </td>
-                    <td style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {record.remarks || '-'}
-                    </td>
+                    {/* Actions disabled - data managed by external system
                     <td>
                       <div className="action-buttons">
                         {!isReadOnly && (
@@ -1084,6 +1192,7 @@ console.log('Filters:', filters);
                         )}
                       </div>
                     </td>
+                    */}
                   </tr>
                 ))
               )}
@@ -1111,7 +1220,7 @@ console.log('Filters:', filters);
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal for manual attendance - disabled as data is managed by external system
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -1172,7 +1281,6 @@ console.log('Filters:', filters);
             <div className="form-group">
               <label>Check In</label>
               <input type="time" name="check_in" value={formData.check_in} onChange={handleChange} />
-              <small style={{ color: '#999', fontSize: '11px' }}>After 10:45 AM = Late</small>
             </div>
             <div className="form-group">
               <label>Check Out</label>
@@ -1193,6 +1301,7 @@ console.log('Filters:', filters);
           </div>
         </form>
       </Modal>
+      */}
 
       {/* Status Popup Modal */}
       {statusPopup.open && (
@@ -1215,8 +1324,8 @@ console.log('Filters:', filters);
             style={{
               background: '#fff',
               borderRadius: '12px',
-              width: '90%',
-              maxWidth: '900px',
+              width: '95%',
+              maxWidth: '1200px',
               maxHeight: '80vh',
               overflow: 'hidden',
               boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
@@ -1272,7 +1381,7 @@ console.log('Filters:', filters);
                     justifyContent: 'center'
                   }}
                 >
-                  ├ù
+                  X
                 </button>
               </div>
             </div>
@@ -1287,7 +1396,11 @@ console.log('Filters:', filters);
                     <tr style={{ background: '#f8f9fa' }}>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Employee ID</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Name</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Phone</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Email</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Department</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Employee Type</th>
+                      <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Designation</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Date</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Check In</th>
                       <th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #eee', fontSize: '12px', fontWeight: '600' }}>Check Out</th>
@@ -1298,8 +1411,22 @@ console.log('Filters:', filters);
                       <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '10px', fontSize: '13px' }}>{record.employee_id || '-'}</td>
                         <td style={{ padding: '10px', fontSize: '13px', fontWeight: '500' }}>{record.staff_name || '-'}</td>
+                        <td style={{ padding: '10px', fontSize: '13px' }}>
+                          {record.phone ? (
+                            <a href={`tel:${record.phone}`} style={{ color: '#1976d2', textDecoration: 'none' }}>{record.phone}</a>
+                          ) : '-'}
+                        </td>
+                        <td style={{ padding: '10px', fontSize: '13px' }}>
+                          {record.email ? (
+                            <a href={`mailto:${record.email}`} style={{ color: '#1976d2', textDecoration: 'none', fontSize: '12px' }}>{record.email}</a>
+                          ) : '-'}
+                        </td>
                         <td style={{ padding: '10px', fontSize: '13px' }}>{record.department || '-'}</td>
-                        <td style={{ padding: '10px', fontSize: '13px' }}>{record.date || '-'}</td>
+                        <td style={{ padding: '10px', fontSize: '13px' }}>{record.employee_type || '-'}</td>
+                        <td style={{ padding: '10px', fontSize: '13px' }}>{record.role || '-'}</td>
+                        <td style={{ padding: '10px', fontSize: '13px' }}>
+                          {record.date ? new Date(record.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                        </td>
                         <td style={{ padding: '10px', fontSize: '13px' }}>{record.check_in || '-'}</td>
                         <td style={{ padding: '10px', fontSize: '13px' }}>{record.check_out || '-'}</td>
                       </tr>

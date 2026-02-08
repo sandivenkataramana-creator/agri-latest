@@ -224,15 +224,59 @@ const ThirdPartyIntegration = () => {
           <FiKey size={28} /> Third-Party Attendance Integration
         </h1>
         
-        <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderLeft: '4px solid #2196F3' }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#1976D2' }}>Integration Guide</h3>
-          <p style={{ margin: '0', fontSize: '14px', color: '#555' }}>
-            Generate API keys for third-party attendance systems (biometric machines, time tracking software, etc.) to push attendance data to your system.
+        {/* ========================================
+            NEW AUTHENTICATION METHOD DOCUMENTATION
+            ======================================== */}
+        <div style={{ background: '#c8e6c9', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderLeft: '4px solid #388e3c' }}>
+          <h3 style={{ margin: '0 0 10px 0', color: '#1b5e20' }}>✓ NEW: HOD + Department Based Authentication (MANDATORY)</h3>
+          <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#1b5e20' }}>
+            <strong>Required:</strong> Both HOD ID and Department ID are MANDATORY. A single HOD can manage multiple departments, 
+            and each staff record belongs to a specific HOD + Department combination. This ensures accurate department-level filtering and separate staff panels.
+          </p>
+          <div style={{ background: '#fff', padding: '12px', borderRadius: '6px', marginBottom: '8px', fontFamily: 'monospace', fontSize: '12px' }}>
+            <strong>POST /api/attendance-import/webhook/attendance</strong><br/>
+            <br/>
+            <strong>Option 1: Headers (Recommended) ⭐</strong><br/>
+            Headers: {'{'}
+            <br/>
+            &nbsp;&nbsp;"x-hod-id": "1",<br/>
+            &nbsp;&nbsp;"x-department-id": "3"<br/>
+            {'}'}
+            <br/>
+            <br/>
+            <strong>Option 2: Request Body</strong><br/>
+            {'{'}
+            <br/>
+            &nbsp;&nbsp;"hod_id": "1",<br/>
+            &nbsp;&nbsp;"department_id": "3",<br/>
+            &nbsp;&nbsp;"employee_id": "EMP001",<br/>
+            &nbsp;&nbsp;"attendance_date": "2026-02-04",<br/>
+            &nbsp;&nbsp;"check_in": "09:30:00",<br/>
+            &nbsp;&nbsp;"check_out": "18:00:00"<br/>
+            {'}'}
+            <br/>
+            <br/>
+            <strong>Option 3: Query Parameters</strong><br/>
+            ?hod_id=1&amp;department_id=3
+          </div>
+          <p style={{ margin: '0', fontSize: '13px', color: '#1b5e20' }}>
+            ✅ <strong>Key Features:</strong> No API key management. HOD and Department are independent. 
+            Staff belongs to specific HOD + Department combo. Attendance filtered by both. Perfect for multi-department HODs with separate panels and staff lists.
           </p>
         </div>
 
-        {/* API Keys Section */}
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+        <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '8px', marginBottom: '20px', borderLeft: '4px solid #2196F3' }}>
+          <h3 style={{ margin: '0 0 10px 0', color: '#1976D2' }}>Integration Guide</h3>
+          <p style={{ margin: '0', fontSize: '14px', color: '#555' }}>
+            Use the NEW method above with HOD ID and Department ID. The endpoint will validate that the employee belongs to the specified HOD and Department before recording attendance.
+          </p>
+        </div>
+
+        {/* ========================================
+            OLD API KEY METHOD UI (COMMENTED OUT)
+            ======================================== */}
+        {/* API Keys Section - DEPRECATED */}
+        {/* <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2 style={{ margin: 0 }}>API Keys ({apiKeys.length})</h2>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -441,8 +485,11 @@ const ThirdPartyIntegration = () => {
         </div> */}
       </div>
 
+      {/* ========================================
+          OLD API KEY MODALS (COMMENTED OUT)
+          ======================================== */}
       {/* View API Key Modal */}
-      {showViewKeyModal && selectedKeyData && (
+      {/* {showViewKeyModal && selectedKeyData && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -700,7 +747,11 @@ const ThirdPartyIntegration = () => {
             </form>
           </div>
         </div>
-      )}
+      )} 
+      {/* ========================================
+          END OF OLD API KEY MODALS
+          ======================================== */}
+    
     </div>
   );
 };

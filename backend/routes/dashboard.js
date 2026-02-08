@@ -312,11 +312,12 @@ router.get('/stats', async (req, res) => {
       let attendanceQuery = `
         SELECT 
           COUNT(*) as total_records,
-          COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
-          COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent,
-          COUNT(CASE WHEN status = 'late' THEN 1 END) as late,
-          COUNT(CASE WHEN status = 'half_day' THEN 1 END) as half_day,
-          COUNT(CASE WHEN status = 'on_leave' OR status = 'leave' THEN 1 END) as on_leave
+          COUNT(CASE WHEN LOWER(status) = 'present' THEN 1 END) as present,
+          COUNT(CASE WHEN LOWER(status) = 'absent' THEN 1 END) as absent,
+          COUNT(CASE WHEN LOWER(status) = 'late' THEN 1 END) as late,
+          COUNT(CASE WHEN LOWER(status) = 'half_day' THEN 1 END) as half_day,
+          COUNT(CASE WHEN LOWER(status) IN ('on_leave', 'leave') THEN 1 END) as on_leave,
+          COUNT(CASE WHEN LOWER(status) NOT IN ('present', 'absent', 'late', 'half_day', 'on_leave', 'leave') OR status IS NULL THEN 1 END) as other
         FROM attendance 
         WHERE hod_id = ?`;
       const attendanceParams = [hodId];
@@ -357,12 +358,13 @@ router.get('/stats', async (req, res) => {
         totalBudget: budget[0].total || 0,
         utilizedBudget: budget[0].utilized || 0,
         todayAttendance: {
-          total: todayAttendance[0].total_records || 0,
-          present: todayAttendance[0].present || 0,
-          absent: todayAttendance[0].absent || 0,
-          late: todayAttendance[0].late || 0,
-          halfDay: todayAttendance[0].half_day || 0,
-          onLeave: todayAttendance[0].on_leave || 0
+          total: Math.max(0, todayAttendance[0]?.total_records || 0),
+          present: Math.max(0, todayAttendance[0]?.present || 0),
+          absent: Math.max(0, todayAttendance[0]?.absent || 0),
+          late: Math.max(0, todayAttendance[0]?.late || 0),
+          halfDay: Math.max(0, todayAttendance[0]?.half_day || 0),
+          onLeave: Math.max(0, todayAttendance[0]?.on_leave || 0),
+          other: Math.max(0, todayAttendance[0]?.other || 0)
         }
       });
     }
@@ -378,11 +380,12 @@ router.get('/stats', async (req, res) => {
     let attendanceQuery = `
       SELECT 
         COUNT(*) as total_records,
-        COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
-        COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent,
-        COUNT(CASE WHEN status = 'late' THEN 1 END) as late,
-        COUNT(CASE WHEN status = 'half_day' THEN 1 END) as half_day,
-        COUNT(CASE WHEN status = 'on_leave' OR status = 'leave' THEN 1 END) as on_leave
+        COUNT(CASE WHEN LOWER(status) = 'present' THEN 1 END) as present,
+        COUNT(CASE WHEN LOWER(status) = 'absent' THEN 1 END) as absent,
+        COUNT(CASE WHEN LOWER(status) = 'late' THEN 1 END) as late,
+        COUNT(CASE WHEN LOWER(status) = 'half_day' THEN 1 END) as half_day,
+        COUNT(CASE WHEN LOWER(status) IN ('on_leave', 'leave') THEN 1 END) as on_leave,
+        COUNT(CASE WHEN LOWER(status) NOT IN ('present', 'absent', 'late', 'half_day', 'on_leave', 'leave') OR status IS NULL THEN 1 END) as other
       FROM attendance 
       WHERE 1=1`;
     const attendanceParams = [];
@@ -424,12 +427,13 @@ router.get('/stats', async (req, res) => {
       totalPrograms: totalPrograms[0].count || 0,
       activePrograms: activePrograms[0].count || 0,
       todayAttendance: {
-        total: todayAttendance[0].total_records || 0,
-        present: todayAttendance[0].present || 0,
-        absent: todayAttendance[0].absent || 0,
-        late: todayAttendance[0].late || 0,
-        halfDay: todayAttendance[0].half_day || 0,
-        onLeave: todayAttendance[0].on_leave || 0
+        total: Math.max(0, todayAttendance[0]?.total_records || 0),
+        present: Math.max(0, todayAttendance[0]?.present || 0),
+        absent: Math.max(0, todayAttendance[0]?.absent || 0),
+        late: Math.max(0, todayAttendance[0]?.late || 0),
+        halfDay: Math.max(0, todayAttendance[0]?.half_day || 0),
+        onLeave: Math.max(0, todayAttendance[0]?.on_leave || 0),
+        other: Math.max(0, todayAttendance[0]?.other || 0)
       }
     });
   } catch (error) {
@@ -782,11 +786,12 @@ router.get('/attendance-by-hod', async (req, res) => {
 
     const [results] = await db.query(`
       SELECT h.name as hod_name, h.department,
-             COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present,
-             COUNT(CASE WHEN a.status = 'absent' THEN 1 END) as absent,
-             COUNT(CASE WHEN a.status = 'half_day' THEN 1 END) as half_day,
-             COUNT(CASE WHEN a.status = 'late' THEN 1 END) as late,
-             COUNT(CASE WHEN a.status = 'leave' THEN 1 END) as on_leave
+             COUNT(*) as total,
+             COUNT(CASE WHEN LOWER(a.status) = 'present' THEN 1 END) as present,
+             COUNT(CASE WHEN LOWER(a.status) = 'absent' THEN 1 END) as absent,
+             COUNT(CASE WHEN LOWER(a.status) = 'half_day' THEN 1 END) as half_day,
+             COUNT(CASE WHEN LOWER(a.status) = 'late' THEN 1 END) as late,
+             COUNT(CASE WHEN LOWER(a.status) IN ('on_leave', 'leave') THEN 1 END) as on_leave
       FROM hods h
       LEFT JOIN attendance a ON h.id = a.hod_id
       ${whereClause}
